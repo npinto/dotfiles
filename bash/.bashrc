@@ -9,3 +9,6 @@ export PYTHONPATH_HOME=$HOME/local/lib/python$PYTHONVERSION/site-packages
 export PYTHONPATH=${PYTHONPATH_HOME}:$PYTHONPATH
 export VIRTUALENV_USE_DISTRIBUTE=1
 
+export EDITOR=vim
+
+
