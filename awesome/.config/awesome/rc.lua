@@ -1,0 +1,1 @@
+/home/thor/Dropbox/config/awesome/rc.lua
