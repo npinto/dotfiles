@@ -1,0 +1,7 @@
+[user]
+	name = Nicolas Pinto
+	email = pinto@mit.edu
+[alias]
+	ci = commit
+	cim = commit -m
+	cimna = commit -m \"na\"
