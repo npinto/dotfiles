@@ -11,11 +11,12 @@ export VIRTUALENV_USE_DISTRIBUTE=1
 
 export EDITOR=vim
 
-
 # ssh keychain / ssh-agent
 if [[ -f ~/.bashrc && -f /usr/bin/keychain ]]; then
 keychain ~/.ssh/id_rsa &> /dev/null;
 . ~/.keychain/$HOSTNAME-sh;
 fi
 
+# aliases
+alias ll='ls -al'
 
