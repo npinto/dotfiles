@@ -19,5 +19,8 @@ fi
 
 # aliases
 alias ll='ls -al'
+
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
+alias clean-~='find . -name "*~" -exec rm -vf {} \;'
+alias clean='clean-pyc; clean-~';
 
