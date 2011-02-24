@@ -1,0 +1,8 @@
+# set mouse sensitivity very low (for logitech 4400 mx)
+xset m 1 5
+
+# disable screensaver
+xset s off
+
+# disable power saving
+xset -dpms 
