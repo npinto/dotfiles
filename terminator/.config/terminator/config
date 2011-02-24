@@ -1,0 +1,31 @@
+[global_config]
+  geometry_hinting = False
+  borderless = True
+[keybindings]
+  switch_to_tab_10 = <Alt>0
+  switch_to_tab_6 = <Alt>6
+  switch_to_tab_7 = <Alt>7
+  switch_to_tab_4 = <Alt>4
+  switch_to_tab_5 = <Alt>5
+  switch_to_tab_2 = <Alt>2
+  switch_to_tab_3 = <Alt>3
+  switch_to_tab_1 = <Alt>1
+  switch_to_tab_8 = <Alt>8
+  switch_to_tab_9 = <Alt>9
+[profiles]
+  [[default]]
+    scrollbar_position = hidden
+    scrollback_lines = 1000000
+    scroll_on_output = False
+    font = Monospace 11
+    allow_bold = False
+    scrollback_infinite = True
+[layouts]
+  [[default]]
+    [[[child1]]]
+      type = Terminal
+      parent = window0
+    [[[window0]]]
+      type = Window
+      parent = ""
+[plugins]
