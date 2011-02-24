@@ -10,7 +10,7 @@ set shiftwidth=4
 set autoindent
 
 set expandtab
-"set paste
+set paste
 
 " spellchecker
 setlocal spell spelllang=en_us
@@ -82,7 +82,7 @@ set laststatus=2 " Always display status line
 set nobackup
 set noswapfile
 
-nnoremap <F2> :set invpaste paste?<CR>
+nnoremap <F2> :set invpaste paste? ruler<CR>
 set pastetoggle=<F2>
 set showmode
 
