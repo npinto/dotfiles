@@ -5,3 +5,4 @@
 	ci = commit
 	cim = commit -m
 	cimna = commit -m \"na\"
+	co = checkout
