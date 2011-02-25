@@ -18,7 +18,9 @@ keychain ~/.ssh/id_rsa &> /dev/null;
 fi
 
 # aliases
-alias ll='ls -al'
+alias ll='ls -halF'
+alias l='ls -hlF'
+alias la='ls -haF'
 
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
