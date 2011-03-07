@@ -10,7 +10,10 @@ set shiftwidth=4
 set autoindent
 
 set expandtab
-set paste
+"set paste
+
+" snipMate
+filetype plugin on
 
 " spellchecker
 setlocal spell spelllang=en_us
@@ -36,12 +39,12 @@ vnoremap ~ ygv"=TwiddleCase(@")<CR>Pgv
 " (without closing other windows)
 map <F5> <C-W>_<C-W><Bar>
 
-" pydiction
-filetype plugin on
-let g:pydiction_location = '~/.vim/plugin/pydiction-1.2/complete-dict'
-let python_higlight_all = 1
-let python_slow_sync = 1
-let python_print_as_function = 0
+"" pydiction
+"filetype plugin on
+"let g:pydiction_location = '~/.vim/plugin/pydiction-1.2/complete-dict'
+"let python_higlight_all = 1
+"let python_slow_sync = 1
+"let python_print_as_function = 0
 
 " --------------------
 " MiniBufExpl
