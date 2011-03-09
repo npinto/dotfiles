@@ -1,0 +1,4 @@
+f = lambda x, y: return x+y
+f = lambda x, y: x+y
+f(1,2)
+import scipy as sp
