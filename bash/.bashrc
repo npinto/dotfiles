@@ -26,3 +26,4 @@ alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
 alias clean='clean-pyc; clean-~';
 
+alias ipy=ipython
