@@ -100,6 +100,19 @@ def main():
     #readline.parse_and_bind('set completion-query-items 1000')
     #readline.parse_and_bind('set page-completions no')
 
+    # -- scientific environment
+    try:
+        import numpy as np
+    except ImportError:
+        pass
+    try:
+        import scipy as sp
+    except ImportError:
+        pass
+    try:
+        import pylab as pl
+    except ImportError:
+        pass
 
 # some config helper functions you can use 
 def import_all(modules):
