@@ -3,13 +3,8 @@ set number
 
 set mouse=a
 
-set tabstop=4
-set ts=4
-set sts=4
-set shiftwidth=4
-set autoindent
+set tabstop=4 softtabstop=4 shiftwidth=4 expandtab
 
-set expandtab
 "set paste
 
 " snipMate
