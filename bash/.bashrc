@@ -29,3 +29,5 @@ alias clean='clean-pyc; clean-~';
 alias ipy=ipython
 
 alias tmux='tmux -2';
+
+alias current='cd ~/goto/current'
