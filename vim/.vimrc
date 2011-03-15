@@ -3,7 +3,11 @@ set number
 
 set mouse=a
 
-set tabstop=4 softtabstop=4 shiftwidth=4 expandtab
+set tabstop=4 softtabstop=4 shiftwidth=4
+set expandtab
+set smarttab
+
+filetype plugin indent on
 
 "set paste
 
@@ -113,7 +117,9 @@ set guicursor+=a:blinkon0
 
 " indent
 set autoindent
-set smartindent
+"set smartindent
+et nosmartident
+set cindent
 filetype indent on
 
 " python stuff
