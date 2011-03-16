@@ -118,7 +118,7 @@ set guicursor+=a:blinkon0
 " indent
 set autoindent
 "set smartindent
-et nosmartident
+set nosmartindent
 set cindent
 filetype indent on
 
