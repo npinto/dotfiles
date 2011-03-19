@@ -1,9 +1,5 @@
 let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =7
-let g:netrw_dirhist_1='/thor_share/NaturalSets/PoliticianFaces_2010-08/data'
-let g:netrw_dirhist_2='/thor_share/NaturalSets/PoliticianFaces_2010-08/data/2010_US_National_Elections_face.com_aligned'
-let g:netrw_dirhist_3='/thor_share/NaturalSets/PoliticianFaces_2010-08/data'
-let g:netrw_dirhist_4='/thor_share/NaturalSets/PoliticianFaces_2010-08'
-let g:netrw_dirhist_5='/thor_share/NaturalSets/PoliticianFaces_2010-08/data'
-let g:netrw_dirhist_6='/thor_share/NaturalSets/PoliticianFaces_2010-08'
-let g:netrw_dirhist_7='/home/thor/.vim'
+let g:netrw_dirhist_cnt =3
+let g:netrw_dirhist_1='/home'
+let g:netrw_dirhist_2='/'
+let g:netrw_dirhist_3='/home/npinto/np-config'
