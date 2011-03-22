@@ -116,7 +116,8 @@ colorscheme mustang
 
 " Vim can highlight whitespaces for you in a convenient way:
 set list
-set listchars=tab:>.,trail:.,extends:#,nbsp:.
+"set listchars=tab:>.,trail:.,extends:#,nbsp:.
+set listchars=tab:>.,trail:.,extends:#
 
 " Disable all blinking:
 set guicursor+=a:blinkon0
