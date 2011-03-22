@@ -17,6 +17,9 @@ keychain ~/.ssh/id_rsa &> /dev/null;
 . ~/.keychain/$HOSTNAME-sh;
 fi
 
+# ls colors
+command -v dircolors &> /dev/null && eval "$(dircolors -b)"
+
 # aliases
 alias ll='ls -halF'
 alias l='ls -hlF'
