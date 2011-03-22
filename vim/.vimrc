@@ -11,6 +11,12 @@ filetype plugin indent on
 
 "set paste
 
+" make {C,S}-{left,right} work in screen or tmux
+map OC <Right>
+map OD <Left>
+map [C <S-Right>
+map [D <S-Left>
+
 " snipMate
 filetype plugin on
 
