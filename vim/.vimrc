@@ -21,8 +21,8 @@ map [D <S-Left>
 filetype plugin on
 
 " spellchecker
-setlocal spell spelllang=en_us
-set nospell
+"setlocal spell spelllang=en_us
+"set nospell
 "autocmd BufNewFile,BufRead *.txt,*.html,README,*tex set spell
 
 " Twiddle case:
