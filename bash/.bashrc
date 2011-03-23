@@ -34,3 +34,7 @@ alias ipy=ipython
 alias tmux='tmux -2';
 
 alias current='cd ~/goto/current'
+
+# fix nose/virtualenv bug, see:
+# http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
+alias nosetests='python `which nosetests`'
