@@ -71,6 +71,10 @@ alias tmux='tmux -2'
 
 alias current='cd ~/goto/current'
 
+# fix nose/virtualenv bug, see:
+# http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
+alias nosetests-hack='python `which nosetests`'
+
 # -----------------------------------------------------------------------------
 # -- MacOSX specific
 # -----------------------------------------------------------------------------
@@ -98,4 +102,3 @@ function am
     open -a /Applications/Aquamacs.app "$@"
  }
 alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
-
