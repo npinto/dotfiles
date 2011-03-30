@@ -165,12 +165,12 @@ set wildmode=list:longest
 " add underscore as keyword (i.e. like a space) 
 "set iskeyword-=_
 
-" -- single character insert
-" inserts an underscore and then starts a command to replace a single
-" character. Thus when you type the character you want, it replaces the
-" underscore inserted by the mapping " from
-" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
-nmap <Space> i_<Esc>r
+"" -- single character insert
+"" inserts an underscore and then starts a command to replace a single
+"" character. Thus when you type the character you want, it replaces the
+"" underscore inserted by the mapping " from
+"" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
+"nmap <Space> i_<Esc>r
 
 
 " -- Make it easy to update/reload vimrc
