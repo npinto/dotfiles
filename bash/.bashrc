@@ -17,6 +17,9 @@ keychain ~/.ssh/id_rsa &> /dev/null;
 . ~/.keychain/$HOSTNAME-sh;
 fi
 
+# ls colors
+command -v dircolors &> /dev/null && eval "$(dircolors -b)"
+
 # aliases
 alias ll='ls -halF'
 alias l='ls -hlF'
@@ -31,3 +34,7 @@ alias ipy=ipython
 alias tmux='tmux -2';
 
 alias current='cd ~/goto/current'
+
+# fix nose/virtualenv bug, see:
+# http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
+alias nosetests-hack='python `which nosetests`'

@@ -21,8 +21,8 @@ map [D <S-Left>
 filetype plugin on
 
 " spellchecker
-setlocal spell spelllang=en_us
-set nospell
+"setlocal spell spelllang=en_us
+"set nospell
 "autocmd BufNewFile,BufRead *.txt,*.html,README,*tex set spell
 
 " Twiddle case:
@@ -119,7 +119,8 @@ colorscheme mustang
 
 " Vim can highlight whitespaces for you in a convenient way:
 set list
-set listchars=tab:>.,trail:.,extends:#,nbsp:.
+"set listchars=tab:>.,trail:.,extends:#,nbsp:.
+set listchars=tab:>.,trail:.,extends:#
 
 " Disable all blinking:
 set guicursor+=a:blinkon0
@@ -167,12 +168,12 @@ set wildmode=list:longest
 " add underscore as keyword (i.e. like a space) 
 "set iskeyword-=_
 
-" -- single character insert
-" inserts an underscore and then starts a command to replace a single
-" character. Thus when you type the character you want, it replaces the
-" underscore inserted by the mapping " from
-" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
-nmap <Space> i_<Esc>r
+"" -- single character insert
+"" inserts an underscore and then starts a command to replace a single
+"" character. Thus when you type the character you want, it replaces the
+"" underscore inserted by the mapping " from
+"" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
+"nmap <Space> i_<Esc>r
 
 
 " -- Make it easy to update/reload vimrc
@@ -194,5 +195,28 @@ nmap <Leader>v :e $MYVIMRC
 vmap r "_dP
 
 
+
+function ShowSpaces(...)
+  let @/='\v(\s+$)|( +\ze\t)'
+  let oldhlsearch=&hlsearch
+  if !a:0
+    let &hlsearch=!&hlsearch
+  else
+    let &hlsearch=a:1
+  end
+  return oldhlsearch
+endfunction
+
+function TrimSpaces() range
+  let oldhlsearch=ShowSpaces(1)
+  execute a:firstline.",".a:lastline."substitute ///gec"
+  let &hlsearch=oldhlsearch
+endfunction
+
+command -bar -nargs=? ShowSpaces call ShowSpaces(<args>)
+command -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
+"nnoremap <F12>     :ShowSpaces 1<CR>
+"nnoremap <S-F12>   m`:TrimSpaces<CR>``
+"vnoremap <S-F12>   :TrimSpaces<CR>
 
 

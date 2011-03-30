@@ -6,3 +6,4 @@
 	cim = commit -m
 	cimna = commit -m \"na\"
 	co = checkout
+	datetag = !git tag `date \"+%Y%m%d%H%M\"`
