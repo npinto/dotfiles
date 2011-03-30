@@ -110,6 +110,9 @@ cmap w!! w !sudo tee % >/dev/null
 filetype plugin indent on
 autocmd filetype python set expandtab
 
+" pylint
+autocmd FileType python compiler pylint
+
 " colorscheme 
 "colorscheme desert
 colorscheme mustang
