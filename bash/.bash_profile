@@ -9,4 +9,5 @@ keychain ~/.ssh/id_rsa;
 . ~/.keychain/$HOSTNAME-sh;
 fi
 
-
+# startup virtualenv-burrito
+#. $HOME/.venvburrito/startup.sh
