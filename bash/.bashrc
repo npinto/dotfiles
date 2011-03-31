@@ -62,6 +62,8 @@ alias ll='ls -halF'
 alias l='ls -hlF'
 alias la='ls -haF'
 
+alias grep='grep --colour=auto'
+
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
 alias clean='clean-pyc; clean-~'
