@@ -79,6 +79,12 @@ alias current='cd ~/goto/current'
 alias nosetests-hack='python `which nosetests`'
 
 # -----------------------------------------------------------------------------
+# -- LD_LIBRARY_PATH Final Updates
+# -----------------------------------------------------------------------------
+# remove useless semicolons from LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$(echo $LD_LIBRARY_PATH | sed -e 's/:*$//g' -e 's/^:*//g')
+
+# -----------------------------------------------------------------------------
 # -- MacOSX specific
 # -----------------------------------------------------------------------------
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
@@ -105,3 +111,4 @@ function am
     open -a /Applications/Aquamacs.app "$@"
  }
 alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
+
