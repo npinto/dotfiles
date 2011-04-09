@@ -27,6 +27,9 @@ map [D <S-Left>
 " snipMate
 filetype plugin on
 
+" syntax for .cu files
+au BufNewFile,BufRead *.cu setf cuda
+
 " spellchecker
 "setlocal spell spelllang=en_us
 "set nospell
