@@ -58,7 +58,7 @@ test -d /usr/local/cuda/lib64 && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lo
 # -----------------------------------------------------------------------------
 # -- ssh keychain / ssh-agent
 # -----------------------------------------------------------------------------
-if [[ -f ~/.bashrc && -f /usr/bin/keychain ]]; then
+if [[ command -v keychain && -f ~/.bashrc ]]; then
     keychain ~/.ssh/id_rsa &> /dev/null;
     . ~/.keychain/$HOSTNAME-sh;
 fi
