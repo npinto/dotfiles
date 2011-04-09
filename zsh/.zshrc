@@ -26,6 +26,9 @@ bindkey '[5~' history-search-backward
 # Page Down
 bindkey '[6~' history-search-forward
 
+# Reverse Search
+bindkey "^r" history-incremental-search-backward
+
 # -- Console-specific key bindings
 if [ "$TERM" = "linux" -o "$TERM" = "screen" -o "$TERM" = "rxvt" ]
 then
