@@ -9,10 +9,12 @@ set smarttab
 
 filetype plugin indent on
 
-" vertical line
-set cursorcolumn
-" horizontal line
-set cursorline
+if exists("+cursorcolumn")
+    " vertical line
+    set cursorcolumn
+    " horizontal line
+    set cursorline
+endif
 
 "set paste
 
@@ -75,10 +77,10 @@ map <F5> <C-W>_<C-W><Bar>
 "" buffers that HAVE CHANGED and are VISIBLE
 "highlight MBEVisibleChanged term=bold cterm=bold gui=bold guibg=DarkRed guifg=Black ctermbg=Blue ctermfg=Red
 
-"let g:miniBufExplMapWindowNavVim = 1 
-"let g:miniBufExplMapWindowNavArrows = 1 
-"let g:miniBufExplMapCTabSwitchBufs = 1 
-"let g:miniBufExplModSelTarget = 1 
+"let g:miniBufExplMapWindowNavVim = 1
+"let g:miniBufExplMapWindowNavArrows = 1
+"let g:miniBufExplMapCTabSwitchBufs = 1
+"let g:miniBufExplModSelTarget = 1
 
 " Stolen from Paul Ivanov
 set hlsearch     " highlight search terms
@@ -111,14 +113,14 @@ nmap <silent> ,/ :nohlsearch<CR>
 " w!! to do that after you opened the file already:
 cmap w!! w !sudo tee % >/dev/null
 
-"   
+"
 filetype plugin indent on
 autocmd filetype python set expandtab
 
 " pylint
 " autocmd FileType python compiler pylint
 
-" colorscheme 
+" colorscheme
 "colorscheme desert
 colorscheme mustang
 
@@ -158,7 +160,7 @@ syntax on
 " :nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
 :nnoremap <Leader>c :set cursorline! <CR>
 
-" map c-e to end-of-line 
+" map c-e to end-of-line
 map <C-e> $<RIGHT>
 imap <C-e> <ESC>$i<RIGHT>
 " map c-a to start-of-line
@@ -170,7 +172,7 @@ set wildmenu
 set wildmode=list:longest
 
 
-" add underscore as keyword (i.e. like a space) 
+" add underscore as keyword (i.e. like a space)
 "set iskeyword-=_
 
 "" -- single character insert
@@ -182,19 +184,19 @@ set wildmode=list:longest
 
 
 " -- Make it easy to update/reload vimrc
-" <Leader> is \ by default, so those commands can be invoked 
+" <Leader> is \ by default, so those commands can be invoked
 " by doing \v and \s
 nmap <Leader>s :source $MYVIMRC
 nmap <Leader>v :e $MYVIMRC
 
 
 " see CamelCaseMotion plugin
-"map <silent> w <Plug>CamelCaseMotion_w 
-"map <silent> b <Plug>CamelCaseMotion_b 
-"map <silent> e <Plug>CamelCaseMotion_e 
-"sunmap w 
-"sunmap b 
-"sunmap e 
+"map <silent> w <Plug>CamelCaseMotion_w
+"map <silent> b <Plug>CamelCaseMotion_b
+"map <silent> e <Plug>CamelCaseMotion_e
+"sunmap w
+"sunmap b
+"sunmap e
 
 
 vmap r "_dP
