@@ -9,6 +9,11 @@ set smarttab
 
 filetype plugin indent on
 
+" vertical line
+set cursorcolumn
+" horizontal line
+set cursorline
+
 "set paste
 
 " make {C,S}-{left,right} work in screen or tmux
