@@ -9,6 +9,11 @@ set smarttab
 
 filetype plugin indent on
 
+" vertical line
+set cursorcolumn
+" horizontal line
+set cursorline
+
 "set paste
 
 " make {C,S}-{left,right} work in screen or tmux
@@ -110,6 +115,9 @@ cmap w!! w !sudo tee % >/dev/null
 filetype plugin indent on
 autocmd filetype python set expandtab
 
+" pylint
+" autocmd FileType python compiler pylint
+
 " colorscheme 
 "colorscheme desert
 colorscheme mustang
@@ -165,12 +173,12 @@ set wildmode=list:longest
 " add underscore as keyword (i.e. like a space) 
 "set iskeyword-=_
 
-" -- single character insert
-" inserts an underscore and then starts a command to replace a single
-" character. Thus when you type the character you want, it replaces the
-" underscore inserted by the mapping " from
-" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
-nmap <Space> i_<Esc>r
+"" -- single character insert
+"" inserts an underscore and then starts a command to replace a single
+"" character. Thus when you type the character you want, it replaces the
+"" underscore inserted by the mapping " from
+"" http://ztatlock.blogspot.com/2009/01/vim-single-character-insert.html
+"nmap <Space> i_<Esc>r
 
 
 " -- Make it easy to update/reload vimrc

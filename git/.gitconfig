@@ -1,8 +1,17 @@
 [user]
-	name = Nicolas Pinto
-	email = pinto@mit.edu
+    npinto = Nicolas Pinto
+    name = Nicolas Pinto
+    email = pinto@mit.edu
 [alias]
-	ci = commit
-	cim = commit -m
-	cimna = commit -m \"na\"
-	co = checkout
+    ci = commit
+    cim = commit -m
+    cimna = commit -m \"na\"
+    co = checkout
+    datetag = !git tag `date \"+%Y%m%d%H%M\"`
+    st = "status -s"
+    br = branch
+    bra = "branch -a"
+    fo = "fetch origin"
+    fu = "fetch upstream"
+    lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)[%an]%Creset' --abbrev-commit --date=relative"
+
