@@ -15,7 +15,6 @@ if exists("+cursorcolumn")
     " horizontal line
     set cursorline
 endif
-
 "set paste
 
 " make {C,S}-{left,right} work in screen or tmux
@@ -26,6 +25,9 @@ map [D <S-Left>
 
 " snipMate
 filetype plugin on
+
+" get around the "/dev/gpmctl: No such file or directory" bug with set mouse=a
+set ttymouse=xterm2
 
 " spellchecker
 "setlocal spell spelllang=en_us
