@@ -115,8 +115,11 @@ def main():
         pass
 
     # -- line_profile magic!
-    import line_profiler
-    ip.expose_magic('lprun', line_profiler.magic_lprun)
+    try:
+        import line_profiler
+        ip.expose_magic('lprun', line_profiler.magic_lprun)
+    except ImportError:
+        pass
 
 
 # some config helper functions you can use
