@@ -123,3 +123,8 @@ function am
  }
 alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
 
+# -----------------------------------------------------------------------------
+# -- Local Profile
+# -----------------------------------------------------------------------------
+test -f $HOME/local/.profile && source $HOME/local/.profile
+
