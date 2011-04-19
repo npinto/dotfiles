@@ -25,6 +25,7 @@ ip = IPython.ipapi.get()
 # import ipy_defaults
 
 import os
+import warnings
 
 def main():
 
@@ -82,7 +83,10 @@ def main():
     #import ipy_autoreload
 
     # For winpdb support (%wdb)
-    #import ipy_winpdb
+    try:
+        import ipy_winpdb
+    except ImportError:
+        warnings.warn("Could not import ipy_winpdb")
 
     # For bzr completer, requires bzrlib (the python installation of bzr)
     #ip.load('ipy_bzr')
@@ -90,36 +94,40 @@ def main():
     # Tab completer that is not quite so picky (i.e.
     # "foo".<TAB> and str(2).<TAB> will work). Complete
     # at your own risk!
-    #import ipy_greedycompleter
+    import ipy_greedycompleter
 
     # If you are on Linux, you may be annoyed by
     # "Display all N possibilities? (y or n)" on tab completion,
     # as well as the paging through "more". Uncomment the following
     # lines to disable that behaviour
-    #import readline
-    #readline.parse_and_bind('set completion-query-items 1000')
-    #readline.parse_and_bind('set page-completions no')
+    import readline
+    readline.parse_and_bind('set completion-query-items 1000')
+    readline.parse_and_bind('set page-completions no')
 
     # -- scientific environment
     try:
-        import numpy as np
+        ip.ex("import numpy as np")
     except ImportError:
-        pass
+        warnings.warn("Could not import numpy as np")
+
     try:
-        import scipy as sp
+        ip.ex("import scipy as sp")
     except ImportError:
-        pass
+        warnings.warn("Could not import scipy as sp")
+
     try:
-        import pylab as pl
+        ip.ex("import pylab as pl")
+        ip.ex("import matplotlib as mpl")
+        ip.ex("import matplotlib.pyplot as plt")
     except ImportError:
-        pass
+        warnings.warn("Could not import pylab as pl")
 
     # -- line_profile magic!
     try:
         import line_profiler
         ip.expose_magic('lprun', line_profiler.magic_lprun)
     except ImportError:
-        pass
+        warnings.warn("Could not import line_profiler")
 
 
 # some config helper functions you can use
