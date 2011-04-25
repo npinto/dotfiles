@@ -111,7 +111,7 @@ filetype plugin indent on
 autocmd filetype python set expandtab
 
 " pylint
-autocmd FileType python compiler pylint
+"autocmd FileType python compiler pylint
 
 " colorscheme 
 "colorscheme desert
