@@ -3,7 +3,18 @@
 # -- bash prompt
 # -----------------------------------------------------------------------------
 #export PS1='\h:\W \u\$'
-export PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w \$\[\033[00m\] '
+if [ "$0" = "-zsh" ]; then
+    if [ "`id -u`" -eq 0 ]; then
+      export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;34;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
+    %#%{[0m%} "
+    else
+      export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;31;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
+    %#%{[0m%} "
+    fi
+else
+    export PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w \$\[\033[00m\] '
+fi
+
 
 # -----------------------------------------------------------------------------
 # -- default editor
@@ -47,7 +58,7 @@ test -d /usr/local/cuda/lib64 && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lo
 # -----------------------------------------------------------------------------
 # -- ssh keychain / ssh-agent
 # -----------------------------------------------------------------------------
-if [[ -f ~/.bashrc && -f /usr/bin/keychain ]]; then
+if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
     keychain ~/.ssh/id_rsa &> /dev/null;
     . ~/.keychain/$HOSTNAME-sh;
 fi
@@ -61,6 +72,8 @@ command -v dircolors &> /dev/null && eval "$(dircolors -b)"
 alias ll='ls -halF'
 alias l='ls -hlF'
 alias la='ls -haF'
+
+alias grep='grep --colour=auto'
 
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
@@ -77,6 +90,12 @@ alias current='cd ~/goto/current'
 alias nosetests-hack='python `which nosetests`'
 
 alias pudb='python -m pudb.run'
+
+# -----------------------------------------------------------------------------
+# -- LD_LIBRARY_PATH Final Updates
+# -----------------------------------------------------------------------------
+# remove useless semicolons from LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$(echo $LD_LIBRARY_PATH | sed -e 's/:*$//g' -e 's/^:*//g')
 
 # -----------------------------------------------------------------------------
 # -- MacOSX specific
@@ -105,3 +124,9 @@ function am
     open -a /Applications/Aquamacs.app "$@"
  }
 alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
+
+# -----------------------------------------------------------------------------
+# -- Local Profile
+# -----------------------------------------------------------------------------
+test -f $HOME/local/.profile && source $HOME/local/.profile
+

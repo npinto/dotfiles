@@ -1,0 +1,2 @@
+# https://github.com/olivierverdier/zsh-git-prompt
+source $HOME/.zsh.d/zsh-git-prompt/zshrc.sh
