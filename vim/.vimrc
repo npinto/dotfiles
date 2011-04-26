@@ -231,4 +231,7 @@ command -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 "nnoremap <S-F12>   m`:TrimSpaces<CR>``
 "vnoremap <S-F12>   :TrimSpaces<CR>
 
+" highlight error color for pyflakes (and any other SpellBad-dependent stuff)
+highlight SpellBad ctermbg=darkgray
+
 
