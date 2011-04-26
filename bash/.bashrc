@@ -90,6 +90,8 @@ alias current='cd ~/goto/current'
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
 
+alias pudb='python -m pudb.run'
+
 # -----------------------------------------------------------------------------
 # -- LD_LIBRARY_PATH Final Updates
 # -----------------------------------------------------------------------------
