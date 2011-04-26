@@ -79,6 +79,7 @@ alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
 alias clean='clean-pyc; clean-~'
 
+alias py=python
 alias ipy=ipython
 
 alias tmux='tmux -2'
