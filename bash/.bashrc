@@ -79,6 +79,7 @@ alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
 alias clean='clean-pyc; clean-~'
 
+alias py=python
 alias ipy=ipython
 
 alias tmux='tmux -2'
@@ -88,6 +89,8 @@ alias current='cd ~/goto/current'
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
+
+alias pudb='python -m pudb.run'
 
 # MacVim
 test -x "/Applications/MacVim.app/Contents/MacOS/Vim" && alias vim=/Applications/MacVim.app/Contents/MacOS/Vim
