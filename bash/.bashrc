@@ -89,6 +89,9 @@ alias current='cd ~/goto/current'
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
 
+# MacVim
+test -x "/Applications/MacVim.app/Contents/MacOS/Vim" && alias vim=/Applications/MacVim.app/Contents/MacOS/Vim
+
 # -----------------------------------------------------------------------------
 # -- LD_LIBRARY_PATH Final Updates
 # -----------------------------------------------------------------------------
