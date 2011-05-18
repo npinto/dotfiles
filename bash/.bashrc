@@ -76,8 +76,9 @@ alias la='ls -haF'
 alias grep='grep --colour=auto'
 
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
+alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
-alias clean='clean-pyc; clean-~'
+alias clean='clean-pyc; clean-coverage; clean-~'
 
 alias py=python
 alias ipy=ipython
