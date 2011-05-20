@@ -164,8 +164,8 @@ syntax on
 " tweak cursorline and cursorcolumn, activate them by \c
 " :hi CursorLine   cterm=NONE ctermbg=darkred ctermfg=white guibg=darkred guifg=white
 ":hi CursorColumn cterm=NONE ctermbg=gray ctermfg=white guibg=darkred guifg=white
-" :nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
-:nnoremap <Leader>c :set cursorline! <CR>
+:nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
+":nnoremap <Leader>c :set cursorline! <CR>
 
 " map c-e to end-of-line
 map <C-e> $<RIGHT>
@@ -240,6 +240,8 @@ highlight SpellBad ctermbg=darkgray
 " Use the same symbols as TextMate for tabstops and EOLs
 " from http://vimcasts.org/episodes/show-invisibles
 set listchars=tab:▸\ ,eol:¬,trail:~
+" Shortcut to rapidly toggle `set list`
+nmap <leader>l :set list!<CR>
 
 
 " Show syntax highlighting groups for word under cursor
