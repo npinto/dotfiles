@@ -1,4 +1,6 @@
 syntax on
+
+
 set number
 
 set mouse=a
@@ -127,7 +129,7 @@ autocmd filetype python set expandtab
 
 " colorscheme
 "colorscheme desert
-colorscheme mustang
+colorscheme mustang_np
 
 " Vim can highlight whitespaces for you in a convenient way:
 set list
@@ -234,4 +236,19 @@ command -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 " highlight error color for pyflakes (and any other SpellBad-dependent stuff)
 highlight SpellBad ctermbg=darkgray
 
+
+" Use the same symbols as TextMate for tabstops and EOLs
+" from http://vimcasts.org/episodes/show-invisibles
+set listchars=tab:▸\ ,eol:¬,trail:~
+
+
+" Show syntax highlighting groups for word under cursor
+" http://vimcasts.org/episodes/creating-colorschemes-for-vim
+nmap <C-S-P> :call <SID>SynStack()<CR>
+function! <SID>SynStack()
+  if !exists("*synstack")
+    return
+  endif
+  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc
 
