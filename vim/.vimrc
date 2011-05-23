@@ -11,12 +11,12 @@ set smarttab
 
 filetype plugin indent on
 
-if exists("+cursorcolumn")
-    " vertical line
-    set cursorcolumn
-    " horizontal line
-    set cursorline
-endif
+"if exists("+cursorcolumn")
+    "" vertical line
+    "set cursorcolumn
+    "" horizontal line
+    "set cursorline
+"endif
 "set paste
 
 " make {C,S}-{left,right} work in screen or tmux
