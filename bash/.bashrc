@@ -76,8 +76,9 @@ alias la='ls -haF'
 alias grep='grep --colour=auto'
 
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
+alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
-alias clean='clean-pyc; clean-~'
+alias clean='clean-pyc; clean-coverage; clean-~'
 
 alias py=python
 alias ipy=ipython
@@ -91,6 +92,9 @@ alias current='cd ~/goto/current'
 alias nosetests-hack='python `which nosetests`'
 
 alias pudb='python -m pudb.run'
+
+# MacVim
+test -x "/Applications/MacVim.app/Contents/MacOS/Vim" && alias vim=/Applications/MacVim.app/Contents/MacOS/Vim
 
 # -----------------------------------------------------------------------------
 # -- LD_LIBRARY_PATH Final Updates

@@ -1,4 +1,6 @@
 syntax on
+
+
 set number
 
 set mouse=a
@@ -9,12 +11,12 @@ set smarttab
 
 filetype plugin indent on
 
-if exists("+cursorcolumn")
-    " vertical line
-    set cursorcolumn
-    " horizontal line
-    set cursorline
-endif
+"if exists("+cursorcolumn")
+    "" vertical line
+    "set cursorcolumn
+    "" horizontal line
+    "set cursorline
+"endif
 "set paste
 
 " make {C,S}-{left,right} work in screen or tmux
@@ -127,7 +129,7 @@ autocmd filetype python set expandtab
 
 " colorscheme
 "colorscheme desert
-colorscheme mustang
+colorscheme mustang_np
 
 " Vim can highlight whitespaces for you in a convenient way:
 set list
@@ -162,8 +164,8 @@ syntax on
 " tweak cursorline and cursorcolumn, activate them by \c
 " :hi CursorLine   cterm=NONE ctermbg=darkred ctermfg=white guibg=darkred guifg=white
 ":hi CursorColumn cterm=NONE ctermbg=gray ctermfg=white guibg=darkred guifg=white
-" :nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
-:nnoremap <Leader>c :set cursorline! <CR>
+:nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
+":nnoremap <Leader>c :set cursorline! <CR>
 
 " map c-e to end-of-line
 map <C-e> $<RIGHT>
@@ -234,4 +236,21 @@ command -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 " highlight error color for pyflakes (and any other SpellBad-dependent stuff)
 highlight SpellBad ctermbg=darkgray
 
+
+" Use the same symbols as TextMate for tabstops and EOLs
+" from http://vimcasts.org/episodes/show-invisibles
+set listchars=tab:▸\ ,eol:¬,trail:~
+" Shortcut to rapidly toggle `set list`
+nmap <leader>l :set list!<CR>
+
+
+" Show syntax highlighting groups for word under cursor
+" http://vimcasts.org/episodes/creating-colorschemes-for-vim
+nmap <C-S-P> :call <SID>SynStack()<CR>
+function! <SID>SynStack()
+  if !exists("*synstack")
+    return
+  endif
+  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc
 
