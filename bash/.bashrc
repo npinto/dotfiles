@@ -43,7 +43,7 @@ export MKL_NUM_THREADS=$NPROCESSORS
 # -- python related
 # -----------------------------------------------------------------------------
 export PYTHONVERSION=$(python -c 'import sys; print sys.version[:3]')
-export PYTHONPATH_HOME=$HOME/local/lib/python$PYTHONVERSION/site-packages
+export PYTHONPATH_HOME=$HOME/local/lib/python$PYTHONVERSION/site-packages:$HOME/local/lib64/python$PYTHONVERSION/site-packages
 export PYTHONPATH=${PYTHONPATH_HOME}:$PYTHONPATH
 
 export VIRTUALENV_USE_DISTRIBUTE=1
