@@ -1,4 +1,3 @@
-
 test -f /etc/profile && source /etc/profile
 
 # -----------------------------------------------------------------------------
@@ -45,15 +44,6 @@ fi
 
 # MKL
 export MKL_NUM_THREADS=$NPROCESSORS
-
-# -----------------------------------------------------------------------------
-# -- python related
-# -----------------------------------------------------------------------------
-export PYTHONVERSION=$(python -c 'import sys; print sys.version[:3]')
-export PYTHONPATH_HOME=$HOME/local/lib/python$PYTHONVERSION/site-packages:$HOME/local/lib64/python$PYTHONVERSION/site-packages
-export PYTHONPATH=${PYTHONPATH_HOME}:$PYTHONPATH
-
-export VIRTUALENV_USE_DISTRIBUTE=1
 
 # -----------------------------------------------------------------------------
 # -- CUDA related
@@ -125,6 +115,9 @@ test -r /sw/bin/init.sh && . /sw/bin/init.sh
 PYTHON_MACOSX=/Library/Frameworks/Python.framework/Versions/Current/bin
 test -d $PYTHON_MACOSX && export PATH=$PYTHON_MACOSX:$PATH
 
+# pythonbrew
+test -f ~/.pythonbrew/etc/bashrc && source ~/.pythonbrew/etc/bashrc
+
 # emacs with small font on MacOSX
 function am
  {
@@ -143,4 +136,14 @@ export MACOSX_DEPLOYMENT_TARGET=10.6
 # -- Local Profile
 # -----------------------------------------------------------------------------
 test -f $HOME/local/.profile && source $HOME/local/.profile
+
+# -----------------------------------------------------------------------------
+# -- python related
+# -----------------------------------------------------------------------------
+export PYTHONVERSION=$(python -c 'import sys; print sys.version[:3]')
+export PYTHONPATH_HOME=$HOME/local/lib/python$PYTHONVERSION/site-packages:$HOME/local/lib64/python$PYTHONVERSION/site-packages
+export PYTHONPATH=${PYTHONPATH_HOME}:$PYTHONPATH
+
+export VIRTUALENV_USE_DISTRIBUTE=1
+
 
