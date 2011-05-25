@@ -130,6 +130,8 @@ function am
  }
 alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
 
+export MACOSX_DEPLOYMENT_TARGET=10.6
+
 # -----------------------------------------------------------------------------
 # -- Local Profile
 # -----------------------------------------------------------------------------
