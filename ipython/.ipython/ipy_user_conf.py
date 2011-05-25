@@ -119,7 +119,7 @@ def main():
         ip.ex("import pylab as pl")
         ip.ex("import matplotlib as mpl")
         ip.ex("import matplotlib.pyplot as plt")
-    except ImportError:
+    except (ImportError, RuntimeError):
         warnings.warn("Could not import pylab as pl")
 
     # -- line_profile magic!
