@@ -4,3 +4,6 @@
 [submodule "external/jtriley"]
 	path = external/jtriley
 	url = https://github.com/jtriley/dotfiles
+[submodule "vim/.vim/pathogen"]
+	path = vim/.vim/pathogen
+	url = https://github.com/tpope/vim-pathogen
