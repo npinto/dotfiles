@@ -1,22 +1,48 @@
-#! /bin/zsh
+# Path to your oh-my-zsh configuration.
+export ZSH=$HOME/dotfiles/zsh/oh-my-zsh
 
-autoload -U compinit zrecompile
+# Set name of the theme to load.
+# Look in $ZSH/themes/
+export ZSH_THEME="npinto"
 
-zsh_cache=${HOME}/.zsh_cache
-mkdir -p $zsh_cache
+# Set to this to use case-sensitive completion
+# export CASE_SENSITIVE="true"
 
-if [ $UID -eq 0 ]; then
-        compinit
-else
-        compinit -d $zsh_cache/zcomp-$HOST
+# Comment this out to disable weekly auto-update checks
+export DISABLE_AUTO_UPDATE="true"
 
-        for f in ~/.zshrc $zsh_cache/zcomp-$HOST; do
-                zrecompile -p $f && rm -f $f.zwc.old
-        done
-fi
+# Uncomment following line if you want to disable colors in ls
+# export DISABLE_LS_COLORS="true"
 
-setopt extended_glob
+# Uncomment following line if you want to disable autosetting terminal title.
+# export DISABLE_AUTO_TITLE="true"
 
-for zshrc_snipplet in ~/.zsh.d/S[0-9][0-9]*[^~] ; do
-        source $zshrc_snipplet
-done
+# Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
+# Example format: plugins=(rails git textmate ruby lighthouse)
+plugins=(git vi-mode)
+
+source $ZSH/oh-my-zsh.sh
+
+# Customize to your needs...
+
+# ----------------------------------------------------------------------------
+#  Keybindings
+# ----------------------------------------------------------------------------
+# search in history
+bindkey -M viins "^R" history-incremental-search-backward
+bindkey -M vicmd "A" vi-add-eol
+# ctrl-e end of line
+bindkey -M viins "^E" end-of-line
+bindkey -M vicmd "^E" end-of-line
+# ctlr-a beg of line
+bindkey -M viins "^A" beginning-of-line
+bindkey -M vicmd "^A" beginning-of-line
+# undo last undo
+bindkey -M vicmd "^R" redo
+# show cursor position info
+bindkey -M vicmd "ga" what-cursor-position
+# swap case over movement
+bindkey -M vicmd "g~" vi-oper-swap-case
+# search in history
+bindkey -M viins "^R" history-incremental-search-backward
+# more at http://www.opensource.cse.ohio-state.edu/sites/default/files/zshrc.txt
