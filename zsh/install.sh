@@ -7,7 +7,7 @@ function verbose {
     $*
 }
 
-for f in .zsh{rc,.d}; do
+for f in .zshrc .oh-my-zsh; do
     echo $f;
     if [[ -e ~/$f ]]; then
         verbose mkdir -p $backup_dir;
