@@ -19,7 +19,7 @@ export DISABLE_AUTO_UPDATE="true"
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Example format: plugins=(rails git textmate ruby lighthouse)
-plugins=(git vi-mode)
+plugins=(git vi-mode pip brew git-flow git-prompt)
 
 source $ZSH/oh-my-zsh.sh
 
