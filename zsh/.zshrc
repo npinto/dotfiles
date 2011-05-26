@@ -25,6 +25,9 @@ source $ZSH/oh-my-zsh.sh
 
 # Customize to your needs...
 
+# disable auto-correct
+unsetopt correct_all
+
 # ----------------------------------------------------------------------------
 #  Keybindings
 # ----------------------------------------------------------------------------
