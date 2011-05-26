@@ -6,19 +6,20 @@ test -f /etc/profile && source /etc/profile
 #export PS1='\h:\W \u\$'
 
 if [ "$0" = "-zsh" ]; then
-    if [ "`id -u`" -eq 0 ]; then
-      export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;34;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
-    %#%{[0m%} "
-    else
-      export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;31;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
-    %#%{[0m%} "
-    fi
+    echo "ZSH!!!";
+#    if [ "`id -u`" -eq 0 ]; then
+      #export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;34;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
+    #%#%{[0m%} "
+    #else
+      #export PS1="%{[33;36;1m%}%T%{[0m%} %{[33;31;1m%}%n%{[0m[33;33;1m%}@%{[33;37;1m%}%m %{[33;32;1m%}%~%{[0m[33;33;1m%}
+    #%#%{[0m%} "
+#    fi
 else
     function parse_git_branch {
         ref=$(git symbolic-ref HEAD 2> /dev/null) || return
         echo "("${ref#refs/heads/}")"
     }
-    export PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w $(parse_git_branch)\$\[\033[00m\] '
+    test -z $PS1 && export PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w $(parse_git_branch)\$\[\033[00m\] '
 fi
 
 
