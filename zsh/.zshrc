@@ -4,6 +4,7 @@ export ZSH=$HOME/.oh-my-zsh
 # Set name of the theme to load.
 # Look in $ZSH/themes/
 export ZSH_THEME="npinto"
+#export ZSH_THEME="sorin"
 
 # Set to this to use case-sensitive completion
 # export CASE_SENSITIVE="true"
@@ -12,7 +13,7 @@ export ZSH_THEME="npinto"
 export DISABLE_AUTO_UPDATE="true"
 
 # Uncomment following line if you want to disable colors in ls
-# export DISABLE_LS_COLORS="true"
+#export DISABLE_LS_COLORS="true"
 
 # Uncomment following line if you want to disable autosetting terminal title.
 # export DISABLE_AUTO_TITLE="true"
@@ -49,3 +50,8 @@ bindkey -M vicmd "g~" vi-oper-swap-case
 # search in history
 bindkey -M viins "^R" history-incremental-search-backward
 # more at http://www.opensource.cse.ohio-state.edu/sites/default/files/zshrc.txt
+
+# -- fn+delete on MacOSX
+bindkey "^[[3~" delete-char
+bindkey -M vicmd "^[[3~" delete-char
+bindkey -M viins "^[[3~" delete-char
