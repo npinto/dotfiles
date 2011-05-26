@@ -1,5 +1,5 @@
 # Path to your oh-my-zsh configuration.
-export ZSH=$HOME/dotfiles/zsh/oh-my-zsh
+export ZSH=$HOME/.oh-my-zsh
 
 # Set name of the theme to load.
 # Look in $ZSH/themes/
