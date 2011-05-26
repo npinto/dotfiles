@@ -1,7 +1,7 @@
 #!/bin/bash
 
-for d in awesome/ bash/ git/ ipython/ screen/ terminator/ tmux/ vim/; do
-    (cd $d; ./install.sh) ;
+for d in `ls -d */`; do
+    (cd $d; test -f ./install.sh && ./install.sh) ;
 done;
 
 

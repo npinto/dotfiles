@@ -68,7 +68,7 @@ command -v dircolors &> /dev/null && eval "$(dircolors -b)"
 # -----------------------------------------------------------------------------
 alias ll='ls -halF'
 alias l='ls -hlF'
-alias la='ls -haF'
+alias la='ls -haFG'
 
 alias grep='grep --colour=auto'
 
