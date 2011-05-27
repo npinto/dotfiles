@@ -4,5 +4,5 @@ test -d $PYTHON_MACOSX && export PATH=$PYTHON_MACOSX:$PATH
 
 # pythonbrew
 test -f ~/.pythonbrew/etc/bashrc && source ~/.pythonbrew/etc/bashrc
-#pythonbrew off
+command -v pythonbrew && pythonbrew switch 2.7.1
 
