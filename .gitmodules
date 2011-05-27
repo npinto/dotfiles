@@ -22,3 +22,6 @@
 [submodule "vim/.vim/bundle/pep8"]
 	path = vim/.vim/bundle/pep8
 	url = https://github.com/nvie/vim-pep8.git
+[submodule "vim/.vim/bundle/command-t"]
+	path = vim/.vim/bundle/command-t
+	url = https://github.com/vim-scripts/Command-T.git
