@@ -59,9 +59,3 @@ bindkey "^[[3~" delete-char
 bindkey -M vicmd "^[[3~" delete-char
 bindkey -M viins "^[[3~" delete-char
 
-# ----------------------------------------------------------------------------
-#  Common to all shells
-# ----------------------------------------------------------------------------
-# TODO: refactor this
-source ~/.bashrc
-#
