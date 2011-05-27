@@ -1,0 +1,13 @@
+# emacs with small font on MacOSX
+function am
+ {
+    # Create the files as needed -- not as good as raw emacs, but acceptable
+    for f in "$@"
+    do
+    test -e $f || touch $f
+    done
+    open -a /Applications/Aquamacs.app "$@"
+ }
+alias em="emacs -fn -apple-courier-medium-r-normal--10-100-72-72-m-100-mac-roman"
+
+

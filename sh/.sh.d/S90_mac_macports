@@ -1,0 +1,4 @@
+# MacPorts
+test -d /opt/local/bin && export PATH=/opt/local/bin:$PATH
+test -d /opt/local/sbin && export PATH=/opt/local/sbin:$PATH
+
