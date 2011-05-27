@@ -16,4 +16,7 @@ for f in .vim{rc,}; do
     verbose ln -sf $(pwd)/$f ~/$f;
 done;
 
+# build command-t C extension
+./build_command-t.sh
+
 # vim: expandtab tabstop=4 shiftwidth=4 autoindent smartindent tw=80:
