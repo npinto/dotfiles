@@ -22,3 +22,12 @@
 [submodule "vim/.vim/bundle/comments"]
 	path = vim/.vim/bundle/comments
 	url = https://github.com/h13ronim/vim-comments
+[submodule "vim/.vim/bundle/pyflakes"]
+	path = vim/.vim/bundle/pyflakes
+	url = https://github.com/kevinw/pyflakes-vim
+[submodule "vim/.vim/bundle/pep8"]
+	path = vim/.vim/bundle/pep8
+	url = https://github.com/nvie/vim-pep8.git
+[submodule "vim/.vim/external/pyflakes"]
+	path = vim/.vim/external/pyflakes
+	url = https://github.com/kevinw/pyflakes.git
