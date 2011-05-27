@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# -----------------------------------------------------------------------------
+# -- processors
+# -----------------------------------------------------------------------------
+if [[ -f /proc/cpuinfo ]]; then
+    export NPROCESSORS=$(cat /proc/cpuinfo | grep processor | wc -l)
+else
+    export NPROCESSORS=1
+fi

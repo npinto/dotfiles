@@ -1,0 +1,76 @@
+" Call Pathogen before anything else
+call pathogen#helptags()
+call pathogen#runtime_append_all_bundles()
+
+filetype plugin on
+filetype plugin indent on
+syntax on
+
+" Color schemes
+set t_Co=256
+"colorscheme vitamins
+colorscheme mustang
+"colorscheme tortepi
+"colorscheme vividchalk
+
+let mapleader=","
+
+" vertical (visual) guide
+set cursorcolumn
+" horizontal (visual) guide
+"set cursorline
+
+"allows inline settings at the beginning/end of file (e.g. :ai:ts=4:)
+set modeline
+"convert tabs to spaces
+set expandtab
+" tab inserts blanks according to 'shiftwidth'
+set smarttab
+"visual bell
+set visualbell
+" copy indent from current line when starting new line
+set autoindent
+"cindent gets annoying at times, so do :set nocindent if you want it off
+set cindent
+" indent based on {}
+set smartindent
+"highlight all search matches
+set hlsearch
+"search as you type
+set incsearch
+"have a save/ignore popup, instead of e.g. failing to quit a modified buffer
+set confirm
+"show matching parens
+set showmatch
+" show the line and column number of the cursor position
+set ruler
+" When switching buffers, do not warn if file is modified
+set hidden
+" Ignore case when searching
+set ignorecase
+" If pattern contains upper case characters, don't ignore case
+set smartcase
+" Show current mode at the bottom left corner
+set showmode
+" Make the backspace key wrap lines
+set backspace=indent,eol,start
+" Put (vim) at the end of the window title
+set title titlestring=%t\ (vim)
+
+
+"list the buffers and await choice
+"(either numbers or some substring, enter keeps you in the same buffer)
+map <leader>b :ls<cr>:buffer<space>
+"go to the next buffer
+map <leader>] :bn<CR>
+"go to the previous buffer
+map <leader>[ :bp<CR>
+"kill the current buffer
+map <leader>k :bd<CR>
+
+" Highlight color definition for bad whitespace
+highlight BadWhitespace ctermbg=red guibg=red
+" Display tabs at the beginning of a line as bad.
+match BadWhitespace /^\t\+/
+" Display trailing whitespace as bad.
+match BadWhitespace /\s\+$/

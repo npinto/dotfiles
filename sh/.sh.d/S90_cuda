@@ -1,0 +1,8 @@
+# -----------------------------------------------------------------------------
+# -- CUDA related
+# -----------------------------------------------------------------------------
+test -d /usr/local/cuda/bin && export PATH=$PATH:/usr/local/cuda/bin
+test -d /usr/local/cuda/lib && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib
+test -d /usr/local/cuda/lib64 && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+
+

@@ -26,6 +26,9 @@ source $ZSH/oh-my-zsh.sh
 
 # Customize to your needs...
 
+# common bourne shell config
+source $HOME/.shrc
+
 # disable auto-correct
 unsetopt correct_all
 
