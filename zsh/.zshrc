@@ -32,6 +32,9 @@ source $HOME/.shrc
 # disable auto-correct
 unsetopt correct_all
 
+
+export HISTFILE=$HOME/.history
+
 # ----------------------------------------------------------------------------
 #  Keybindings
 # ----------------------------------------------------------------------------
