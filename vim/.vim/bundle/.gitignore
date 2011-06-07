@@ -1,6 +1,6 @@
-ruby/command-t/Makefile
-ruby/command-t/ext.o
-ruby/command-t/ext.so
-ruby/command-t/match.o
-ruby/command-t/matcher.o
-ruby/command-t/mkmf.log
+command-t/ruby/command-t/Makefile
+command-t/ruby/command-t/ext.o
+command-t/ruby/command-t/ext.so
+command-t/ruby/command-t/match.o
+command-t/ruby/command-t/matcher.o
+command-t/ruby/command-t/mkmf.log
