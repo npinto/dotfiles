@@ -23,7 +23,7 @@ export DISABLE_AUTO_UPDATE="true"
 plugins=(git vi-mode pip brew git-flow git-prompt)
 
 # common bourne shell config
-source $HOME/.shrc
+test -f $HOME/.shrc && source $HOME/.shrc
 
 # OMZ !
 source $ZSH/oh-my-zsh.sh
