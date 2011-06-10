@@ -263,6 +263,11 @@ set noswapfile
 " application to exec on :make and take current filename -- for python, mine
 set makeprg=python\ %<.py
 
+" ipython syntax highlighting
+au FileType ipy set syntax=python
+
+" doc/release/0.8.0-notes.rst
+
 " use bash-like file auto-completion
 set wildmenu
 set wildmode=list:longest

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
     keychain ~/.ssh/id_rsa &> /dev/null;
-    . ~/.keychain/$HOSTNAME-sh;
+    . ~/.keychain/$(hostname)-sh;
 fi
 
 
