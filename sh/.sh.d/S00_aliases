@@ -29,6 +29,7 @@ alias pudb='python -m pudb.run'
 # -- git aliases
 # ----------------------------------------------------------------------------
 alias g='git'
+alias ga='git add'
 alias gst='git status'
 alias gl='git pull'
 alias gup='git fetch && git rebase'
