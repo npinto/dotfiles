@@ -162,6 +162,16 @@ set ttymouse=xterm2
 " ------------------------------------------
 " -- Editing Helpers
 " ------------------------------------------
+
+" folding (with shortcuts)
+augroup vimrc
+  au BufReadPre * setlocal foldmethod=indent
+  au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
+augroup END
+set foldlevelstart=20
+nnoremap <space> za
+vnoremap <space> zf
+
 " paste mode
 nnoremap <F2> :set invpaste paste? ruler<CR>
 set pastetoggle=<F2>
@@ -232,6 +242,10 @@ set backspace=indent,eol,start
 
 " Put (vim) at the end of the window title
 set title titlestring=%t\ (vim)
+
+" Fast saving
+nmap <leader>w :w!<CR>
+
 
 " ------------------------------------------
 " -- Search
