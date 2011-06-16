@@ -55,6 +55,7 @@ map <C-t><right> :tabn<cr>
 
 " replace self.A = B by B = self.A
 command! -bar -range=% SwapEqual :<line1>,<line2>s/\(\s*\)\([^=]*\)\s\+=\s\+\([^;]*\)/\1\3 = \2/g | :nohl
+nohl
 
 
 " ------------------------------------------
