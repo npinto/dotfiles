@@ -17,11 +17,13 @@ alias ipy=ipython
 
 alias tmux='tmux -2'
 
-alias current="cd $(ls -l ~/goto/current | awk '{print $11}')"
+test -d ~/goto && alias current="cd $(ls -l ~/goto/current | awk '{print $11}')"
 
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
+# nosetests helper
+alias nsvx='nosetests -s -v -x'
 
 alias pudb='python -m pudb.run'
 
@@ -29,6 +31,7 @@ alias pudb='python -m pudb.run'
 # -- git aliases
 # ----------------------------------------------------------------------------
 alias g='git'
+alias ga='git add'
 alias gst='git status'
 alias gl='git pull'
 alias gup='git fetch && git rebase'
@@ -59,4 +62,6 @@ alias ggpull='git pull origin $(current_branch)'
 alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
-
+# get_flash_videos
+alias gfv=get_flash_videos
+alias gfvd="cd ~/doc && get_flash_videos"

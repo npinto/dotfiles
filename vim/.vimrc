@@ -53,6 +53,11 @@ map <C-t><down> :tabl<cr>
 map <C-t><left> :tabp<cr>
 map <C-t><right> :tabn<cr>
 
+" replace self.A = B by B = self.A
+command! -bar -range=% SwapEqual :<line1>,<line2>s/\(\s*\)\([^=]*\)\s\+=\s\+\([^;]*\)/\1\3 = \2/g | :nohl
+nohl
+
+
 " ------------------------------------------
 " -- Indentation
 " ------------------------------------------
@@ -162,6 +167,16 @@ set ttymouse=xterm2
 " ------------------------------------------
 " -- Editing Helpers
 " ------------------------------------------
+
+" folding (with shortcuts)
+augroup vimrc
+  au BufReadPre * setlocal foldmethod=indent
+  au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
+augroup END
+set foldlevelstart=20
+nnoremap <space> za
+vnoremap <space> zf
+
 " paste mode
 nnoremap <F2> :set invpaste paste? ruler<CR>
 set pastetoggle=<F2>
@@ -233,6 +248,10 @@ set backspace=indent,eol,start
 " Put (vim) at the end of the window title
 set title titlestring=%t\ (vim)
 
+" Fast saving
+nmap <leader>w :w!<CR>
+
+
 " ------------------------------------------
 " -- Search
 " ------------------------------------------
@@ -266,6 +285,11 @@ set noswapfile
 
 " application to exec on :make and take current filename -- for python, mine
 set makeprg=python\ %<.py
+
+" ipython syntax highlighting
+au FileType ipy set syntax=python
+
+" doc/release/0.8.0-notes.rst
 
 " use bash-like file auto-completion
 set wildmenu
