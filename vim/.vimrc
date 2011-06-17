@@ -122,6 +122,10 @@ set showmatch
 " show row/col positions
 set ruler
 
+" toggle terminal/mouse support for select/copy/paste
+nmap <leader>mt :set mouse=a number list <CR>
+nmap <leader>mm :set mouse= nonumber nolist <CR>
+
 " Use the same symbols as TextMate for tabstops and EOLs
 " from http://vimcasts.org/episodes/show-invisibles
 "set listchars=tab:>.,trail:.,extends:#,nbsp:.
@@ -142,7 +146,7 @@ endif
 " visual bell
 set visualbell
 
-" Tired of clearing highlighted searches 
+" Tired of clearing highlighted searches
 " by searching for “ldsfhjkhgakjks”?
 " Use this:
 nmap <silent> <leader>/ :nohlsearch<CR>
