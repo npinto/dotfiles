@@ -1,1 +1,1 @@
-test -f /usr/local/Cellar/coreutils/8.12/aliases && source /usr/local/Cellar/coreutils/8.12/aliases
+#test -f /usr/local/Cellar/coreutils/8.12/aliases && source /usr/local/Cellar/coreutils/8.12/aliases
