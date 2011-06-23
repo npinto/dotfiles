@@ -165,6 +165,32 @@ set mouse=a
 set ttymouse=xterm2
 
 " ------------------------------------------
+" -- Buffer Navigation
+" ------------------------------------------
+" -- miniBufExpl plugin
+let g:miniBufExplMapWindowNavVim = 1
+let g:miniBufExplMapWindowNavArrows = 1
+let g:miniBufExplModSelTarget = 1
+" Replace the following
+"let g:miniBufExplMapCTabSwitchBufs = 1
+" with tmux-like bindings to avoid conflicts with snipMate <C-TAB>
+noremap <C-n> :MBEbn<CR>
+noremap <C-p> :MBEbp<CR>
+" Fix bug described in
+" https://github.com/fholgado/minibufexpl.vim/issues/1
+au BufEnter * call MyLastWindow()
+function! MyLastWindow()
+  " if the window is quickfix go on
+  if &buftype=="nofile"
+    " if this window is last on screen quit without warning
+    if winnr('$') < 2
+      quit!
+    endif
+  endif
+endfunction
+
+
+" ------------------------------------------
 " -- Editing Helpers
 " ------------------------------------------
 
@@ -250,7 +276,6 @@ set title titlestring=%t\ (vim)
 
 " Fast saving
 nmap <leader>w :w!<CR>
-
 
 " ------------------------------------------
 " -- Search
