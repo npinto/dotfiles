@@ -30,6 +30,13 @@ alias nsvx='nosetests -s -v -x'
 alias pudb='python -m pudb.run'
 
 # ----------------------------------------------------------------------------
+# -- Aliases for GNU Coreutils, sed, etc.
+# (especially useful on BSD systems, like MacOS X)
+# ----------------------------------------------------------------------------
+# GNU sed
+command -v gsed &> /dev/null && alias sed='gsed'
+
+# ----------------------------------------------------------------------------
 # -- git aliases
 # ----------------------------------------------------------------------------
 alias g='git'
