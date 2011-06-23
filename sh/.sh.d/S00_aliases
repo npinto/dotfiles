@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# -- aliases
+# -- Various aliases
 # -----------------------------------------------------------------------------
 alias ll='ls -halF'
 alias l='ls -hlF'
@@ -11,6 +11,7 @@ alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
 alias clean='clean-pyc; clean-coverage; clean-~'
+alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
 
 alias py=python
 alias ipy=ipython
