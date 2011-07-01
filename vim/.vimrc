@@ -13,6 +13,7 @@ filetype plugin indent on
 " ------------------------------------------
 set t_Co=256
 colorscheme mustang_np
+"colorscheme ir_black
 
 " ------------------------------------------
 " -- Keybindings
@@ -171,6 +172,7 @@ set ttymouse=xterm2
 let g:miniBufExplMapWindowNavVim = 1
 let g:miniBufExplMapWindowNavArrows = 1
 let g:miniBufExplModSelTarget = 1
+let g:miniBufExplUseSingleClick = 1
 " Replace the following
 "let g:miniBufExplMapCTabSwitchBufs = 1
 " with tmux-like bindings to avoid conflicts with snipMate <C-TAB>

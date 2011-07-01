@@ -1,12 +1,31 @@
 # -----------------------------------------------------------------------------
-# -- Various aliases
+# -- Various
 # -----------------------------------------------------------------------------
 alias ll='ls -halF'
 alias l='ls -hlF'
 alias la='ls -haFG'
+alias recent="ls -lAt | head"
+alias df='df -h'
+alias du='du -h -c'
+
+function mkcd(){
+    mkdir $1;
+    cd $1;
+}
 
 alias grep='grep --colour=auto'
 
+alias tmux='tmux -2'
+
+test -d ~/goto && alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')"
+
+# get_flash_videos
+alias gfv=get_flash_videos
+alias gfvd="cd ~/doc && get_flash_videos"
+
+# ----------------------------------------------------------------------------
+# -- cleaning
+# ----------------------------------------------------------------------------
 alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
 alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
 alias clean-~='find . -name "*~" -exec rm -vf {} \;'
@@ -14,16 +33,16 @@ alias clean='clean-pyc; clean-coverage; clean-~'
 alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
 alias find-and-remove-trailing-whitespaces-here="for f in \$(find . -name '*.m'); do remove-trailing-whitespaces \$f; done;"
 
+# ----------------------------------------------------------------------------
+# -- python-related
+# ----------------------------------------------------------------------------
 alias py=python
 alias ipy=ipython
-
-alias tmux='tmux -2'
-
-test -d ~/goto && alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')"
 
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
+
 # nosetests helper
 alias nsvx='nosetests -s -v -x'
 
@@ -72,6 +91,42 @@ alias ggpull='git pull origin $(current_branch)'
 alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
-# get_flash_videos
-alias gfv=get_flash_videos
-alias gfvd="cd ~/doc && get_flash_videos"
+
+# ----------------------------------------------------------------------------
+# -- Functions
+# ----------------------------------------------------------------------------
+extract () {
+    if [ -f $1 ] ; then
+        case $1 in
+            *.tar.bz2)  tar xjf $1      ;;
+            *.tar.gz)   tar xzf $1      ;;
+            *.bz2)      bunzip2 $1      ;;
+            *.rar)      rar x $1        ;;
+            *.gz)       gunzip $1       ;;
+            *.tar)      tar xf $1       ;;
+            *.tbz2)     tar xjf $1      ;;
+            *.tgz)      tar xzf $1      ;;
+            *.zip)      unzip $1        ;;
+            *.Z)        uncompress $1   ;;
+            *)          echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+grab() {
+    sudo chown -R ${USER} ${1:-.}
+}
+
+psgrep() {
+    if [ ! -z $1 ] ; then
+        echo "Grepping for processes matching $1..."
+        ps aux | grep $1 | grep -v grep
+    else
+        echo "!! Need name to grep for"
+    fi
+}
+
+bu () { cp $1 ~/.backup/`basename $1`-`date +%Y%m%d%H%M`.backup ; }
+
