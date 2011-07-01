@@ -83,10 +83,10 @@ def main():
     #import ipy_autoreload
 
     # For winpdb support (%wdb)
-    try:
-        import ipy_winpdb
-    except ImportError:
-        warnings.warn("Could not import ipy_winpdb")
+    #try:
+        #import ipy_winpdb
+    #except ImportError:
+        #warnings.warn("Could not import ipy_winpdb")
 
     # For bzr completer, requires bzrlib (the python installation of bzr)
     #ip.load('ipy_bzr')
@@ -115,12 +115,12 @@ def main():
     except ImportError:
         warnings.warn("Could not import scipy as sp")
 
-    try:
-        ip.ex("import pylab as pl")
-        ip.ex("import matplotlib as mpl")
-        ip.ex("import matplotlib.pyplot as plt")
-    except (ImportError, RuntimeError):
-        warnings.warn("Could not import pylab as pl")
+    #try:
+        #ip.ex("import pylab as pl")
+        #ip.ex("import matplotlib as mpl")
+        #ip.ex("import matplotlib.pyplot as plt")
+    #except (ImportError, RuntimeError):
+        #warnings.warn("Could not import pylab as pl")
 
     # -- line_profile magic!
     try:
@@ -128,6 +128,9 @@ def main():
         ip.expose_magic('lprun', line_profiler.magic_lprun)
     except ImportError:
         warnings.warn("Could not import line_profiler")
+
+    # -- virtualenv awareness
+    execf('~/.ipython/virtualenv.py')
 
 
 # some config helper functions you can use
