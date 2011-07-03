@@ -11,9 +11,13 @@ filetype plugin indent on
 " ------------------------------------------
 " -- colorscheme
 " ------------------------------------------
-set t_Co=256
-colorscheme mustang_np
-"colorscheme ir_black
+if $TERM =~ '^linux'
+    set t_Co=8
+else
+    set t_Co=256
+    colorscheme mustang_np
+    "colorscheme ir_black
+endif
 
 " ------------------------------------------
 " -- Keybindings
