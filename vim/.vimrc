@@ -295,6 +295,40 @@ set smartcase
 
 " incremental search (as you type)
 "set incsearch
+"
+" ------------------------------------------
+" -- Python related
+" ------------------------------------------
+
+" application to exec on :make and take current filename -- for python, mine
+set makeprg=python\ %<.py
+
+" ipython syntax highlighting
+au FileType ipy set syntax=python
+
+let g:pyflakes_use_quickfix = 0
+
+"" Do make with different makeprg settings.
+"" Error lists from each makeprg are combined into one quickfix list.
+"command! Pycheck call DoMake('pyflakes', 'pep8')
+"function! DoMake(...)
+  "update  " save any changes because makeprg checks the file on disk
+  "let savemp = &makeprg
+  "let qflist = []
+  "for prg in a:000
+    "let &makeprg = prg . ' %'
+    "silent make!
+    "let qflist += getqflist()
+  "endfor
+  "if empty(qflist)
+    "cclose
+  "else
+    "call setqflist(qflist)
+    "copen
+    "cfirst
+  "endif
+  "let &makeprg = savemp
+"endfunction
 
 " ------------------------------------------
 " -- MISC
@@ -314,14 +348,20 @@ set hidden
 set nobackup
 set noswapfile
 
-" application to exec on :make and take current filename -- for python, mine
-set makeprg=python\ %<.py
-
-" ipython syntax highlighting
-au FileType ipy set syntax=python
-
-" doc/release/0.8.0-notes.rst
-
 " use bash-like file auto-completion
 set wildmenu
 set wildmode=list:longest
+
+"" http://vim.wikia.com/wiki/Show_entire_multiline_error_in_quickfix
+"" \cc
+"map <Leader>cc :cwindow<CR>:cc<CR><c-w>bz<CR><CR>
+"" \cn
+"map <Leader>cn :cwindow<CR>:cn<CR><c-w>bz<CR><CR>
+"" \cp
+"map <Leader>cp :cwindow<CR>:cp<CR><c-w>bz<CR><CR>
+
+" Quickfix jump to error line through press Enter
+" http://vim.1045645.n5.nabble.com/Quickfix-jumping-td1191243.html
+"set errorformat=%A%f\ IBM%nI\ %t\ %l.0\ %m,%Z%m
+map <leader>qn :cn<CR>
+map <leader>qp :cp<CR>
