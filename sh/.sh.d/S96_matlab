@@ -1,0 +1,2 @@
+test -d /opt/MATLAB/R2010b/bin && export PATH=/opt/MATLAB/R2011a/bin:$PATH
+test -d /opt/MATLAB/R2011a/bin && export PATH=/opt/MATLAB/R2011a/bin:$PATH
