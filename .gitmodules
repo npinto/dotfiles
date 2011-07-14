@@ -28,3 +28,6 @@
 [submodule "vim/.vim/bundle/minibufexpl"]
 	path = vim/.vim/bundle/minibufexpl
 	url = https://github.com/fholgado/minibufexpl.vim
+[submodule "vim/.vim/bundle/conque"]
+	path = vim/.vim/bundle/conque
+	url = https://github.com/rson/vim-conque
