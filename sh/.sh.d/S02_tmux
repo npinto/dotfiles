@@ -1,0 +1,3 @@
+# for tmux: export 256color
+test -n "$TMUX" && export TERM=screen-256color
+

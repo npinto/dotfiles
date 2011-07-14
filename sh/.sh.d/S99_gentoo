@@ -1,0 +1,1 @@
+test -f /var/lib/portage/world && alias world="sudo bash -c 'set -x; eix-sync && glsa-check -t all && glsa-check -f all; glsa-check -p \$(glsa-check -t all); glsa-check -f \$(glsa-check -t all); emerge -avuDN -j --with-bdeps y --keep-going world system && emerge -av --depclean && revdep-rebuild -v -- --ask && eclean-dist -d && eix-test-obsolete && dispatch-conf'"
