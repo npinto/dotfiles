@@ -1,4 +1,7 @@
 *backup-*
 *~
-*pyc
+*.pyc
 ipython/.ipython/IPython_crash_report.txt
+*.bundle
+*.swp
+*.o

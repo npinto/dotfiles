@@ -31,3 +31,15 @@
 [submodule "vim/.vim/bundle/conque"]
 	path = vim/.vim/bundle/conque
 	url = https://github.com/rson/vim-conque
+[submodule "vim/.vim/bundle/rst-tables"]
+	path = vim/.vim/bundle/rst-tables
+	url = https://github.com/nvie/vim-rst-tables
+[submodule "vim/.vim/bundle/rst-headings"]
+	path = vim/.vim/bundle/rst-headings
+	url = https://github.com/jtriley/vim-rst-headings
+[submodule "vim/.vim/bundle/fugitive"]
+	path = vim/.vim/bundle/fugitive
+	url = https://github.com/tpope/vim-fugitive
+[submodule "vim/.vim/bundle/extradite"]
+	path = vim/.vim/bundle/extradite
+	url = https://github.com/int3/vim-extradite
