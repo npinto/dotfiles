@@ -48,3 +48,6 @@
 	url = https://github.com/int3/vim-extradite
 
 # vim: noexpandtab
+[submodule "iterm2/iTerm-2-Color-Themes"]
+	path = iterm2/iTerm-2-Color-Themes
+	url = https://github.com/baskerville/iTerm-2-Color-Themes.git
