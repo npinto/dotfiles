@@ -42,6 +42,8 @@ export HISTFILE=$HOME/.history
 # search in history
 bindkey -M viins "^R" history-incremental-search-backward
 bindkey -M vicmd "A" vi-add-eol
+# kill line
+bindkey "^K" kill-line
 # ctrl-e end of line
 bindkey -M viins "^E" end-of-line
 bindkey -M vicmd "^E" end-of-line
@@ -57,6 +59,7 @@ bindkey -M vicmd "g~" vi-oper-swap-case
 # search in history
 bindkey -M viins "^R" history-incremental-search-backward
 # more at http://www.opensource.cse.ohio-state.edu/sites/default/files/zshrc.txt
+
 
 # -- fn+delete on MacOSX
 bindkey "^[[3~" delete-char
