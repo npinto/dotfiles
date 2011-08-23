@@ -22,13 +22,16 @@ export DISABLE_AUTO_UPDATE="true"
 # Example format: plugins=(rails git textmate ruby lighthouse)
 plugins=(git vi-mode pip brew git-flow git-prompt)
 
+# -- systemwide .profile
+test -f /etc/profile && source /etc/profile
+
 # OMZ !
 source $ZSH/oh-my-zsh.sh
 
 # -- Customize to your needs...
 
 # common bourne shell config
-test -f $HOME/.shrc && . $HOME/.shrc
+test -f $HOME/.shrc && source $HOME/.shrc
 
 #
 # disable auto-correct

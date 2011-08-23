@@ -1,6 +1,3 @@
-# systemwide .profile
-test -f /etc/profile && source /etc/profile
-
 for sh_script in ~/.sh.d/S[0-9][0-9]*[^~]; do
     source $sh_script
 done
