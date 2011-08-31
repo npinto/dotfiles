@@ -1,4 +1,8 @@
 
+
+# -- systemwide .profile
+test -f /etc/profile && source /etc/profile
+
 # common bourne shell config
 source $HOME/.shrc
 
