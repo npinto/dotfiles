@@ -205,7 +205,7 @@ augroup vimrc
   au BufReadPre * setlocal foldmethod=indent
   au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
 augroup END
-set foldlevelstart=20
+"set foldlevelstart=20
 nnoremap <space> za
 vnoremap <space> zf
 
