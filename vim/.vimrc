@@ -208,6 +208,9 @@ augroup END
 "set foldlevelstart=20
 nnoremap <space> za
 vnoremap <space> zf
+" save and restores folds when a file is closed and re-opened
+au BufWinLeave * mkview
+au BufWinEnter * silent loadview
 
 " paste mode
 nnoremap <F2> :set invpaste paste? ruler<CR>
