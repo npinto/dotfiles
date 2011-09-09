@@ -92,6 +92,11 @@ alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
 
+# -----------------------------------------------------------------------------
+# -- Kernel
+# -----------------------------------------------------------------------------
+alias install_kernel_x86_64="export KERNEL_SUFFIX=$(make modules_install | grep DEPMOD | awk '{print $2}') && echo $KERNEL_SUFFIX && cp -vf arch/x86_64/boot/bzImage /boot/kernel-${KERNEL_SUFFIX} && cp -vf .config /boot/config-${KERNEL_SUFFIX} && cp -vf System.map /boot/System.map-${KERNEL_SUFFIX}"
+
 # ----------------------------------------------------------------------------
 # -- Functions
 # ----------------------------------------------------------------------------
