@@ -19,7 +19,7 @@ c = get_config()
 # c.TerminalIPythonApp.log_level = 30
 
 # lines of code to run at IPython startup.
-c.TerminalIPythonApp.exec_lines = []
+c.TerminalIPythonApp.exec_lines = [
     'import numpy as np',
     'import scipy as sp',
 ]
@@ -41,7 +41,7 @@ c.TerminalIPythonApp.exec_lines = []
 # configuration (through profiles), history storage, etc. The default is usually
 # $HOME/.ipython. This options can also be specified through the environment
 # variable IPYTHON_DIR.
-# c.TerminalIPythonApp.ipython_dir = u'/home/npinto/.ipython'
+# c.TerminalIPythonApp.ipython_dir = u'/home/npinto/.config/ipython'
 
 # Whether to display a banner upon starting IPython.
 # c.TerminalIPythonApp.display_banner = True
@@ -106,7 +106,7 @@ c.TerminalIPythonApp.exec_lines = []
 # configuration (through profiles), history storage, etc. The default is usually
 # $HOME/.ipython. This options can also be specified through the environment
 # variable IPYTHON_DIR.
-# c.TerminalIPythonApp.ipython_dir = u'/home/npinto/.ipython'
+# c.TerminalIPythonApp.ipython_dir = u'/home/npinto/.config/ipython'
 
 # Whether to display a banner upon starting IPython.
 # c.TerminalIPythonApp.display_banner = True
