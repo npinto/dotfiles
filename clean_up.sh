@@ -1,0 +1,3 @@
+#!/bin/bash
+
+find . -name "backup-????-??-??_*h*m*s" | xargs rm -rvf
