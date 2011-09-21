@@ -113,7 +113,7 @@ highlight SpellBad ctermbg=darkgray
 set number
 
 " highlight search terms
-set hlsearch
+"set hlsearch
 
 " Show current mode at the bottom left corner
 set showmode
