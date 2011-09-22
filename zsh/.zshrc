@@ -37,6 +37,9 @@ test -f $HOME/.shrc && source $HOME/.shrc
 # disable auto-correct
 unsetopt correct_all
 
+# disable shared history
+unsetopt share_history
+
 
 export HISTFILE=$HOME/.history
 
