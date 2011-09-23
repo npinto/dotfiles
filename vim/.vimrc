@@ -114,6 +114,8 @@ set number
 
 " highlight search terms
 "set hlsearch
+" don't highlight search terms
+set nohlsearch
 
 " Show current mode at the bottom left corner
 set showmode
