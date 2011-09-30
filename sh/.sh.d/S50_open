@@ -1,2 +1,13 @@
+#!/bin/bash
 
+function is_present {
+    command -v $1 > /dev/null;
+}
 
+if ! is_present open; then
+    if is_present gnome-open; then
+        alias open=gnome-open;
+    elif is_present xdg-open; then
+        alias open=xdg-open;
+    fi;
+fi;
