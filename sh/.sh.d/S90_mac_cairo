@@ -1,0 +1,2 @@
+test -r /usr/local/Cellar/cairo/1.10.2/lib && export LDFLAGS="$LDFLAGS -L/usr/local/Cellar/cairo/1.10.2/lib"
+test -r /usr/local/Cellar/cairo/1.10.2/include && export CPPFLAGS="$CPPFLAGS -I/usr/local/Cellar/cairo/1.10.2/include"
