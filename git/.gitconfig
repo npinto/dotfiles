@@ -14,5 +14,6 @@
     fo = "fetch origin"
     fu = "fetch upstream"
     lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)[%an]%Creset' --abbrev-commit --date=relative"
+    lgol = "!git --no-pager log --pretty=oneline"
 [github]
     user = npinto
