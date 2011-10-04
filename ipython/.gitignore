@@ -1,6 +1,6 @@
 .ipython/db/
 .ipython/history
 *.sqlite
-
 .config/ipython/old/db
 .config/ipython/old/history
+.config/ipython/profile_default/db/*
