@@ -1,0 +1,299 @@
+#!/bin/bash
+
+# This script will show how to unmask one or more package and their
+# dependencies if keyword masked. Output can be redirected directly to
+# /etc/portage/package.keywords as every extra output will be sent to
+# stderr. See help for more informations.
+#
+# This script needs `lndir' to work!
+#
+# Author  : david.e.pi.3.14[at]gmail.com
+#
+# License : 'GPLv2 or later'
+#
+#           Unmasker: shows how to unmask a package
+#           Copyright (C) 2008, Radice David <david.e.pi.3.14[at]gmail.com>
+#
+#           This program is free software; you can redistribute it and/or
+#           modify it under the terms of the GNU General Public License
+#           as published by the Free Software Foundation; either version 2
+#           of the License, or (at your option) any later version.
+#
+#           This program is distributed in the hope that it will be useful,
+#           but WITHOUT ANY WARRANTY; without even the implied warranty of
+#           MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+PORTAGE_CONFIGROOT=/
+
+function cant_unmask() {
+    echo "failed!" 1>&2
+    echo "It seems that it is impossible to unmask $TARGET. Here is emerge output:" 1>&2
+    cat "$1" 1>&2
+    exit 1
+}
+
+function clone_portage_config() {
+    local string="Portage config cloning failed!"
+
+    FAKE_PORTAGE_CONFIGROOT=$(mktemp -d) || die "$string"
+    mkdir -p $FAKE_PORTAGE_CONFIGROOT/etc/portage
+
+    ln -s $PORTAGE_CONFIGROOT/etc/make.conf \
+          $FAKE_PORTAGE_CONFIGROOT/etc/make.conf
+
+    lndir $PORTAGE_CONFIGROOT/etc/portage \
+          $FAKE_PORTAGE_CONFIGROOT/etc/portage \
+          &> /dev/null || die "$string"
+
+    local oldpwd="$PWD"
+    cd $PORTAGE_CONFIGROOT/etc
+    cd `readlink make.profile`
+    local profile=$PWD
+    cd "$oldpwd"
+    ln -s $profile $FAKE_PORTAGE_CONFIGROOT/etc/make.profile
+
+    if [ -f $FAKE_PORTAGE_CONFIGROOT/etc/portage/package.keywords ]; then
+        rm $FAKE_PORTAGE_CONFIGROOT/etc/portage/package.keywords
+        mkdir $FAKE_PORTAGE_CONFIGROOT/etc/portage/package.keywords
+
+        cat $PORTAGE_CONFIGROOT/etc/portage/package.keywords \
+            > $FAKE_PORTAGE_CONFIGROOT/etc/portage/package.keywords/base
+    fi
+
+    UNMASK_FILE=$(mktemp -p $FAKE_PORTAGE_CONFIGROOT/etc/portage/package.keywords) || die "$string"
+}
+
+function die() {
+    echo "" 1>&2
+    echo "$1" 1>&2
+    exit 1
+}
+
+function explode_atom() {
+    local full_name="$1"
+    CATEGORY=${full_name%/*}
+    PVR=${full_name#*/}
+    P=${PVR%-r*}
+    PR=${PVR#$P}
+    PR=${PR#-}
+    PN=${P%-*}
+    PV=${P#$PN-}
+}
+
+function help() {
+    echo "unmasker: shows how to ~arch unmask a package and its dependencies,"
+    echo "output can be redirected to /etc/portage/package.keywords as extra"
+    echo "output will be redirected to stderr."
+    echo ""
+    echo "Usage: unmasker [options] [target]"
+    echo ""
+    echo " -d, --debug            : keep temporary files for debugging purpose"
+    echo " -h, --help             : shows this help"
+    echo " -f, --file [file]      : append output to [file]"
+    echo " -k, --keywords [keys]  : set accepted keywords (defaults to '**')"
+    echo " -o, --only-one-version : unmask only the needed version of each package"
+    echo "     --vim              : insert vim syntax autocmd"
+    echo ""
+    echo " [target]               : the package or the set of packages to unmask"
+    echo ""
+    echo "Examples:"
+    echo ""
+    echo "  single package        : unmasker pidgin"
+    echo "  specific version      : unmasker '=www-browser/mozilla-firefox-3.0-r1'"
+    echo "  two packages          : unmasker pidgin octave"
+}
+
+function hit_bug() {
+    echo "Something went bad. This is probably a bug in the unmask script." 1>&2
+    echo "Here is the emerge output (for debugging purposes):" 1>&2
+    cat $1 1>&2
+    echo "" 1>&2
+    echo "FAKE_PORTAGE_CONFIGROOT : " $FAKE_PORTAGE_CONFIGROOT 1>&2
+    echo "outfile                 : " $outfile 1>&2
+    echo "list                    : " $list 1>&2
+    exit 1
+}
+
+function main() {
+    KEYS='**'
+    DEBUG=false
+    ONLY_ONE_VERSION=false
+    SAVE_TO_FILE=false
+    SHOW_HELP=false
+    USE_VIM=false
+
+    unset TARGET
+    unset V_TARGET
+
+    local atom
+    local proceed=true
+    local old_atom
+    local list=$(mktemp) || die "Unable to make a temporary file!"
+    local outfile=$(mktemp) || die "Unable to make a temporary file!"
+    local target
+    local pn_target
+
+    read_line "$@"
+
+    if [ "$SHOW_HELP" == "true" ]; then
+        help 1>&2
+        exit 1
+    fi
+
+    if [ -z "$TARGET" ]; then
+        echo "You must set a [target] at least" 1>&2
+        echo "Try $0 --help for more information." 1>&2
+        exit 1
+    fi
+
+    clone_portage_config
+
+    echo -n "Checking for consistency..." 1>&2
+    ACCEPT_KEYWORDS="$KEYS" \
+    emerge --pretend $TARGET \
+        > $outfile \
+        2> /dev/null \
+        || cant_unmask $outfile
+    echo "done!" 1>&2
+    echo "" 1>&2
+
+    # This is used to select the best version of a package
+    # if no version is given
+    cat $outfile \
+                 | grep -v -E '\[blocks B     \]' \
+                 | grep -E '\[ebuild' \
+                 | cut -d ']' -f 2 \
+                 | cut -d ' ' -f 2 \
+                 > $list
+
+    for target in $TARGET; do
+        if [ -z $(echo $target | grep '/') ]; then
+            pn_target=$target
+        else
+            explode_atom $target
+            pn_target=$PN
+        fi
+
+        atom=$( \
+                cat $list \
+                | grep $pn_target-[[:digit:]] \
+              )
+
+        explode_atom $atom
+        V_TARGET="$V_TARGET "="$CATEGORY/$PVR"
+    done
+
+    atom=""
+
+    if [ "$USE_VIM" == "true" ]; then
+        echo '# vim: set ft=gentoo-package-keywords :' | tee -a $UNMASK_FILE
+        echo "" | tee -a $UNMASK_FILE
+    fi
+
+    while [ "$proceed" == true ]; do
+        emerge --pretend \
+               --config-root=$FAKE_PORTAGE_CONFIGROOT \
+               $V_TARGET \
+               &> $outfile \
+               && proceed=false
+
+        if [ "$proceed" == true ]; then
+            old_atom=$atom
+            atom=$( \
+                    cat $outfile \
+                    | grep "masked by" \
+                    | head -n 1 \
+                    | cut -d ' ' -f 2 \
+                  )
+
+            # Make sure we don't go in an endless loop for some reason
+            if [ "$atom" == "$old_atom" ]; then
+                hit_bug $outfile
+            fi
+
+            explode_atom $atom
+
+            if [[ -z "$CATEGORY"  || -z "$PVR" || -z "$PN" ]]; then
+                hit_bug $outfile
+            fi
+
+            if [ "$ONLY_ONE_VERSION" == "true" ]; then
+                echo '='$CATEGORY/$PVR "$KEYS" | tee -a $UNMASK_FILE
+            else
+                echo $CATEGORY/$PN "$KEYS" | tee -a $UNMASK_FILE
+            fi
+       fi
+    done
+
+    if [ "$SAVE_TO_FILE" == "true" ]; then
+        if [ "$FILE_EXISTS" == "true" ]; then
+            echo "###################################################" >> "$FILENAME"
+            echo "#   Unmasking: $TARGET" >> "$FILENAME"
+            echo "###################################################" >> "$FILENAME"
+            cat $UNMASK_FILE >> "$FILENAME"
+            echo "###################################################" >> "$FILENAME"
+        else
+            cat $UNMASK_FILE >> "$FILENAME"
+        fi
+    fi
+
+    if [ "$DEBUG" == true ]; then
+        echo "" 1>&2
+        echo "FAKE_PORTAGE_CONFIGROOT : " $FAKE_PORTAGE_CONFIGROOT 1>&2
+        echo "outfile                 : " $outfile 1>&2
+        echo "list                    : " $list 1>&2
+    else
+        rm -rf $FAKE_PORTAGE_CONFIGROOT
+        rm $outfile
+        rm $list
+    fi
+}
+
+function print_atom() {
+    echo "CATEGORY : " $CATEGORY
+    echo "PVR      : " $PVR
+    echo "P        : " $P
+    echo "PR       : " $PR
+    echo "PN       : " $PN
+    echo "PV       : " $PV
+}
+
+
+function read_line() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -d|--debug)
+                DEBUG=true
+                ;;
+            -h|--help)
+                SHOW_HELP=true
+                ;;
+            -f|--file)
+                SAVE_TO_FILE=true
+                FILENAME="$2"
+            if [ -f "$FILENAME" ]; then
+               FILE_EXISTS=true
+            else
+               FILE_EXISTS=false
+            fi
+                shift
+                ;;
+            -k|--keywords)
+                KEYS="$2"
+                shift
+                ;;
+            -o|--only-one-version)
+                ONLY_ONE_VERSION=true
+                ;;
+            --vim)
+                USE_VIM=true
+                ;;
+            *)
+                TARGET="$TARGET $1"
+                ;;
+        esac
+        shift
+    done
+}
+
+main "$@"
