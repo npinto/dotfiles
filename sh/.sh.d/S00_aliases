@@ -93,6 +93,17 @@ alias ggpull='git pull origin $(current_branch)'
 alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
+# -----------------------------------------------------------------------------
+# -- SSH related
+# -----------------------------------------------------------------------------
+ssh_push_pub_key() {
+    if [ ! $(echo $1 | grep '.*pub$') ]; then
+        echo "Wrong extension detected! Use a public key with extension .pub!!!";
+        return 1;
+    else;
+        cat $1 | ssh $2 'mkdir -p ~/.ssh && cd ~/.ssh && touch authorized_keys && chmod 640 authorized_keys && cat >> authorized_keys'
+    fi
+}
 
 # -----------------------------------------------------------------------------
 # -- Kernel
