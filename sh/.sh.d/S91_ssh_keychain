@@ -2,8 +2,8 @@
 # -- ssh keychain / ssh-agent
 # -----------------------------------------------------------------------------
 if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
-    keychain ~/.ssh/id_rsa &> /dev/null;
+    for f in ~/.ssh/id_?sa; do
+        keychain $f &> /dev/null;
+    done;
     . ~/.keychain/$(hostname)-sh;
 fi
-
-
