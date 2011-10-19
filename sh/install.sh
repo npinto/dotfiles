@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 backup_dir=backup-$(date +"%Y-%m-%d_%Hh%Mm%Ss")
 
