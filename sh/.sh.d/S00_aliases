@@ -17,7 +17,9 @@ alias grep='grep --colour=auto'
 
 alias tmux='tmux -2'
 
-test -d ~/goto && alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')"
+test -d ~/goto && \
+         alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
+         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf \$(pwd) ~/goto/current"
 
 # get_flash_videos
 alias gfv=get_flash_videos
@@ -91,6 +93,19 @@ alias ggpull='git pull origin $(current_branch)'
 alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
+# -----------------------------------------------------------------------------
+# -- SSH related
+# -----------------------------------------------------------------------------
+ssh_push_pub_key() {
+    fname=$1;
+    host=$2;
+    if [ "$(echo $fname | tail -c 5)" = ".pub" ]; then
+        cat $fname | ssh $host 'mkdir -p ~/.ssh && cd ~/.ssh && touch authorized_keys && chmod 640 authorized_keys && cat >> authorized_keys';
+    else
+        echo "Wrong extension detected! Use a public key with extension .pub!!!";
+        return 1
+    fi
+}
 
 # -----------------------------------------------------------------------------
 # -- Kernel

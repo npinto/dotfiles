@@ -320,6 +320,10 @@ set title titlestring=%t\ (vim)
 " Fast saving
 nmap <leader>w :w!<CR>
 
+" GRB: use fancy buffer closing that doesn't close the split
+" from http://goo.gl/AVz1V
+cnoremap <expr> bd (getcmdtype() == ':' ? 'Bclose' : 'bd')
+
 " ------------------------------------------
 " -- Search
 " ------------------------------------------

@@ -33,13 +33,14 @@ source $ZSH/oh-my-zsh.sh
 # common bourne shell config
 test -f $HOME/.shrc && source $HOME/.shrc
 
-#
 # disable auto-correct
 unsetopt correct_all
 
 # disable shared history
 unsetopt share_history
 
+# prevent > redirection from truncating the given file if it already exists
+setopt no_clobber
 
 export HISTFILE=$HOME/.history
 

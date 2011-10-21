@@ -4,3 +4,4 @@
 .config/ipython/old/db
 .config/ipython/old/history
 .config/ipython/profile_default/db/*
+.config/ipython/Crash_report_ipython.txt
