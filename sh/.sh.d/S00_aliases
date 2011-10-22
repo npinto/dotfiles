@@ -13,6 +13,8 @@ function mkcd(){
     cd $1;
 }
 
+alias cb='cd && cd-'
+
 alias grep='grep --colour=auto'
 
 alias tmux='tmux -2'
