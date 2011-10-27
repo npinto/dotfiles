@@ -44,6 +44,10 @@ setopt no_clobber
 
 export HISTFILE=$HOME/.history
 
+# Print the exit value of programs with non-zero exit status
+setopt PRINT_EXIT_VALUE
+
+
 # ----------------------------------------------------------------------------
 #  Keybindings
 # ----------------------------------------------------------------------------

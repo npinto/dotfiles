@@ -13,6 +13,7 @@ for f in .config/terminator; do
         verbose mkdir -p $backup_dir;
         verbose mv ~/$f $backup_dir;
     fi;
+    verbose mkdir -p $(dirname ~/$f);
     verbose ln -sf $(pwd)/$f ~/$f;
 done;
 
