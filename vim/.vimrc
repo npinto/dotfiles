@@ -25,6 +25,9 @@ endif
 " set leader key
 let mapleader=","
 
+" Press ,, to Escape
+imap ,, <Esc>
+
 " make {C,S}-{left,right} work in screen or tmux
 map OC <Right>
 map OD <Left>
