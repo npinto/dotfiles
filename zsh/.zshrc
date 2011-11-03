@@ -47,6 +47,10 @@ export HISTFILE=$HOME/.history
 # Print the exit value of programs with non-zero exit status
 setopt PRINT_EXIT_VALUE
 
+# Efficient completion
+zstyle ':completion:*' accept-exact '*(N)'
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path ~/.zsh/cache
 
 # ----------------------------------------------------------------------------
 #  Keybindings
