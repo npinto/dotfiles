@@ -214,9 +214,13 @@ endfunction
 augroup vimrc
   au BufReadPre * setlocal foldmethod=indent
   au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
+  "au BufWinEnter * normal zR
 augroup END
 set foldlevelstart=100
-"set foldlevel=20
+"set foldlevel=100
+"set nofoldenable
+"autocmd Syntax c,cpp,vim,xml,html,xhtml,perl,python,ebuild normal zR
+
 nnoremap <space> za
 vnoremap <space> zf
 " save and restores folds when a file is closed and re-opened
