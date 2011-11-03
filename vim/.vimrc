@@ -288,6 +288,7 @@ function! AppendModeline()
   let l:modeline = substitute(&commentstring, "%s", l:modeline, "")
   call append(line("$"), l:modeline)
 endfunction
+command! -bar -nargs=0 AppendModeline call AppendModeline()
 nnoremap <silent> <Leader>ml :call AppendModeline()<CR>
 
 " sudo trick
@@ -321,7 +322,7 @@ command! -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 "vnoremap <S-F12>   :TrimSpaces<CR>
 
 " Make the backspace key wrap lines
-set backspace=indent,eol,start
+"set backspace=indent,eol,start
 
 " Put (vim) at the end of the window title
 set title titlestring=%t\ (vim)
