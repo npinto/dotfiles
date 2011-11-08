@@ -15,6 +15,7 @@ portage-dirs:
 world-use: portage-dirs
 	echo 'dev-libs/libxml2 python' > /etc/portage/package.use/libxml2 
 	echo 'x11-libs/libdrm libkms' > /etc/portage/package.use/libdrm 
+	echo 'x11-libs/pango X' > /etc/portage/package.use/pango
 
 sudo:
 	emerge -uN sudo
