@@ -1,5 +1,8 @@
 
-default: vim tmux screen htop
+default: zsh vim tmux screen htop
+
+zsh:
+	emerge -uN zsh
 
 vim:
 	echo "app-editors/vim bash-completion vim-pager python ruby" > /etc/portage/package.use/vim
