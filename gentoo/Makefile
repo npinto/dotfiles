@@ -8,6 +8,10 @@ portage-dirs:
 	mkdir -p /etc/portage/package.mask
 	mkdir -p /etc/portage/package.unmask
 
+# XXX:
+# net-select (for ntpdate)
+# lsof (system)
+
 # -- Tools
 tools: zsh vim tmux screen htop gparallel
 
