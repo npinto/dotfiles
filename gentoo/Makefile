@@ -13,7 +13,7 @@ portage-dirs:
 	mkdir -p /etc/portage/package.unmask
 
 world-use: portage-dirs
-	echo 'dev-libs/libxml2 python' > /etc/portage/package.use/python 
+	echo 'dev-libs/libxml2 python' > /etc/portage/package.use/libxml2 
 	echo 'x11-libs/libdrm libkms' > /etc/portage/package.use/libdrm 
 
 sudo:
