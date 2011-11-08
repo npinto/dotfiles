@@ -21,6 +21,9 @@ netselect:
 lsof:
 	emerge -uN lsof
 
+cpufrequtils:
+	emerge -uN sys-power/cpufrequtils
+
 # ============================================================================
 # -- Tools
 # ============================================================================
@@ -54,7 +57,8 @@ gparallel:
 # ============================================================================
 scientific: atlas numpy scipy
 
-atlas:
+atlas: cpufrequtils
+	cpufreq-set -g performance
 	# -- blas
 	emerge -uN cblas blas
 	emerge -uN blas-atlas
