@@ -1,18 +1,29 @@
 
 default: system tools scientific
 
+# ============================================================================
 # -- System
+# ============================================================================
+system: portage-dirs sudo netselect lsof
+
 portage-dirs:
 	mkdir -p /etc/portage/package.keywords
 	mkdir -p /etc/portage/package.use
 	mkdir -p /etc/portage/package.mask
 	mkdir -p /etc/portage/package.unmask
 
-# XXX:
-# net-select (for ntpdate)
-# lsof (system)
+sudo:
+	emerge -uN sudo
 
+netselect:
+	emerge -uN netselect
+
+lsof:
+	emerge -uN lsof
+
+# ============================================================================
 # -- Tools
+# ============================================================================
 tools: zsh vim tmux screen htop gparallel
 
 zsh:
@@ -32,9 +43,12 @@ htop:
 	emerge -uN htop
 
 gparallel:
+	echo "sys-process/parallel ~amd64" >> /etc/portage/package.keywords/gparallel
 	emerge -uN sys-process/parallel
 
+# ============================================================================
 # -- Scientific
+# ============================================================================
 scientific: atlas numpy scipy
 
 atlas:
