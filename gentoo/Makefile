@@ -4,13 +4,17 @@ all: system tools scientific
 # ============================================================================
 # -- System
 # ============================================================================
-system: portage-dirs sudo netselect lsof
+system: portage-dirs world-use sudo netselect lsof
 
 portage-dirs:
 	mkdir -p /etc/portage/package.keywords
 	mkdir -p /etc/portage/package.use
 	mkdir -p /etc/portage/package.mask
 	mkdir -p /etc/portage/package.unmask
+
+world-use: portage-dirs
+	echo 'dev-libs/libxml2 python' > /etc/portage/package.use/python 
+	echo 'x11-libs/libdrm libkms' > /etc/portage/package.use/libdrm 
 
 sudo:
 	emerge -uN sudo
