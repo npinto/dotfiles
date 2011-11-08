@@ -1,5 +1,5 @@
 
-default: system tools scientific
+all: system tools scientific
 
 # ============================================================================
 # -- System
@@ -24,13 +24,13 @@ lsof:
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop gparallel
+tools: zsh vim tmux screen htop keychain gparallel
 
 zsh:
 	emerge -uN zsh
 
 vim: portage-dirs
-	echo "app-editors/vim bash-completion vim-pager python ruby" >> /etc/portage/package.use/vim
+	echo "app-editors/vim bash-completion vim-pager python ruby" > /etc/portage/package.use/vim
 	emerge -uN vim{,-core}
 
 tmux:
@@ -42,8 +42,11 @@ screen:
 htop:
 	emerge -uN htop
 
+keychain:
+	emerge -uN keychain
+
 gparallel:
-	echo "sys-process/parallel ~amd64" >> /etc/portage/package.keywords/gparallel
+	echo "sys-process/parallel ~amd64" > /etc/portage/package.keywords/gparallel
 	emerge -uN sys-process/parallel
 
 # ============================================================================
@@ -63,8 +66,8 @@ atlas:
 	eselect lapack set atlas || exit 0
 
 numpy: portage-dirs atlas
-	echo "=dev-python/numpy-1.6.1-r1" >> ${EPREFIX}/etc/portage/package.mask/numpy-1.6.1-r1
-	echo "dev-python/numpy doc lapack test" >> ${EPREFIX}/etc/portage/package.use/numpy
+	echo "=dev-python/numpy-1.6.1-r1" > ${EPREFIX}/etc/portage/package.mask/numpy-1.6.1-r1
+	echo "dev-python/numpy doc lapack test" > ${EPREFIX}/etc/portage/package.use/numpy
 	emerge -uN --onlydeps numpy
 	FEATURES=test emerge -uN numpy
 
