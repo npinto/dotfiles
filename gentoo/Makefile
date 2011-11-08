@@ -1,6 +1,10 @@
 
 default: tools scientific
 
+# XXX:
+# net-select (for ntpdate)
+# lsof (system)
+
 # -- Tools
 tools: zsh vim tmux screen htop gparallel
 
