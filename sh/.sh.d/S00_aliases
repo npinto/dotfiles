@@ -98,7 +98,7 @@ alias ggpnp='git pull origin $(current_branch) && git push origin $(current_bran
 # -----------------------------------------------------------------------------
 # -- SSH related
 # -----------------------------------------------------------------------------
-ssh_push_pub_key() {
+ssh-push-pub-key() {
     fname=$1;
     host=$2;
     if [ "$(echo $fname | tail -c 5)" = ".pub" ]; then

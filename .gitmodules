@@ -12,7 +12,8 @@
 	url = https://github.com/scrooloose/nerdcommenter.git
 [submodule "vim/.vim/bundle/supertab"]
 	path = vim/.vim/bundle/supertab
-	url = https://github.com/tsaleh/vim-supertab.git
+	#url = https://github.com/tsaleh/vim-supertab.git
+	url = https://github.com/ervandew/supertab.git
 [submodule "vim/.vim/bundle/comments"]
 	path = vim/.vim/bundle/comments
 	url = https://github.com/h13ronim/vim-comments
