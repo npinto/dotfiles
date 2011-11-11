@@ -20,6 +20,14 @@ c = get_config()
 
 # lines of code to run at IPython startup.
 c.TerminalIPythonApp.exec_lines = [
+
+    # -- standard library
+    'import os',
+    'import sys',
+    'from os import path',
+    'import cPickle as pkl',
+
+    # -- standard packages
     'import numpy as np',
     'import scipy as sp',
 ]
