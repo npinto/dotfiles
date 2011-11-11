@@ -103,6 +103,9 @@ scikits.learn: pip
 # ============================================================================
 # -- MISC
 # ============================================================================
-gprof2dot:
+graphviz:
+	emerge -uN media-gfx/graphviz
+
+gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
 	emerge -uN dev-util/gprof2dot
