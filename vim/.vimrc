@@ -352,7 +352,20 @@ set smartcase
 
 " incremental search (as you type)
 "set incsearch
-"
+
+" ------------------------------------------
+" -- Auto Completion
+" ------------------------------------------
+" SuperTab Options
+let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabRetainCompletionDuration = "completion"
+let g:SuperTabNoCompleteAfter = [',', '\s']
+let g:SuperTabLongestEnhanced = 1
+"let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
+"filetype plugin on
+"autocmd FileType python set omnifunc=pythoncomplete#Complete
+"set ofu=syntaxcomplete#Complete
+
 " ------------------------------------------
 " -- Python related
 " ------------------------------------------
