@@ -99,3 +99,10 @@ joblib: pip
 
 scikits.learn: pip
 	pip install -vUI scikits.learn
+
+# ============================================================================
+# -- MISC
+# ============================================================================
+gprof2dot:
+	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
+	emerge -uN dev-util/gprof2dot
