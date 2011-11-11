@@ -2,3 +2,10 @@ for sh_script in ~/.sh.d/S[0-9][0-9]*[^~]; do
     source $sh_script
 done
 
+if [[ -e ~/.ssh/.sh.d ]]; then
+    for sh_script in ~/.ssh/.sh.d/S[0-9][0-9]*[^~]; do
+        source $sh_script;
+    done;
+fi;
+
+
