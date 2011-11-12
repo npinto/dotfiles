@@ -4,7 +4,7 @@ all: system tools scientific
 # ============================================================================
 # -- System
 # ============================================================================
-system: portage-dirs world-use sudo netselect lsof
+system: portage-dirs world-use sudo netselect lsof nfs-utils
 
 portage-dirs:
 	mkdir -p /etc/portage/package.keywords
@@ -28,6 +28,9 @@ lsof:
 
 cpufrequtils:
 	emerge -uN sys-power/cpufrequtils
+
+nfs-utils:
+	emerge -uN net-fs/nfs-utils
 
 # ============================================================================
 # -- Tools
@@ -64,7 +67,7 @@ pip:
 # ============================================================================
 # -- Scientific
 # ============================================================================
-scientific: atlas numpy scipy
+scientific: atlas numpy scipy ipython joblib scikits.learn
 
 atlas: cpufrequtils
 	cpufreq-set -g performance
@@ -109,3 +112,4 @@ graphviz:
 gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
 	emerge -uN dev-util/gprof2dot
+
