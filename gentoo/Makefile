@@ -35,7 +35,7 @@ nfs-utils:
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop keychain gparallel pip
+tools: zsh vim tmux screen htop keychain gparallel pip tig
 
 zsh:
 	emerge -uN zsh
@@ -63,6 +63,9 @@ gparallel:
 pip:
 	echo 'dev-python/pip ~amd64' > /etc/portage/package.keywords/pip
 	emerge -uN dev-python/pip
+
+tig:
+	emerge -uN tig
 
 # ============================================================================
 # -- Scientific
