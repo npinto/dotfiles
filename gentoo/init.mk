@@ -1,0 +1,2 @@
+
+EMERGE=emerge --quiet
