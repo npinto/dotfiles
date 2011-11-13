@@ -357,14 +357,60 @@ set smartcase
 " -- Auto Completion
 " ------------------------------------------
 " SuperTab Options
-let g:SuperTabDefaultCompletionType = "context"
-let g:SuperTabRetainCompletionDuration = "completion"
-let g:SuperTabNoCompleteAfter = [',', '\s']
-let g:SuperTabLongestEnhanced = 1
+"let g:SuperTabDefaultCompletionType = "context"
+"let g:SuperTabRetainCompletionDuration = "completion"
+"let g:SuperTabNoCompleteAfter = [',', '\s']
+"let g:SuperTabLongestEnhanced = 1
 "let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
 "filetype plugin on
 "autocmd FileType python set omnifunc=pythoncomplete#Complete
 "set ofu=syntaxcomplete#Complete
+
+" Remap <C-x> <C-n> to <c-space>
+"inoremap <Nul> <C-x><C-n>
+
+" From Paul Ivanov:
+""
+"" XXX: i think this is slow in large projects!
+"" not even sure if this works, don't really use it
+"autocmd FileType python set omnifunc=pythoncomplete#Complete
+"" ctrl-space to omnicomplete
+""inoremap <Nul> <C-x><C-o> 
+"inoremap <Nul> <space>  
+"set suffixesadd+=.c,.cpp,.h,.java,.l,.py,.cu,.rst,
+""set background=dark
+""let's see if this is any good
+""set clipboard=unnamed
+""filetype on
+""filetype indent on
+"filetype plugin indent on
+""colorscheme kate
+""colorscheme wombat
+"colorscheme tortepi
+"colorscheme blue
+""highlight Comment ctermbg=darkgreen guifg=darkgreen
+"set spelllang=en,ru
+"command! SpellCheck :set spell
+"command! Spell :!aspell -c "%"
+"command! T :Tlist
+"" don't use this anymore - use rubber instead
+"" command! Latex :set makeprg=latex\ %\ &&\ dvipdf\ %<.dvi
+""iab ,b \begin{}<Esc>i
+""iab ,e \end{}<Esc>i
+""iab ,m $$ $$hh
+""iab ., {}h
+"map <F8> :make<cr><cr>
+"map <F7> :w!<CR>:Spell<CR>:e! %<CR>
+"map <F6> :w!<CR>:!wc %<CR>
+"map <F2> :!sort -n<CR>
+"map <F4> :Todo<CR>
+""speed up switching between splits
+"map <C-J> <C-W>j
+"map <C-K> <C-W>k
+"map <C-h> <C-W>h
+"map <C-l> <C-W>l
+
+
 
 " ------------------------------------------
 " -- Python related
