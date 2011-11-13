@@ -70,9 +70,6 @@ pip: python27
 	emerge -uDN dev-python/pip
 
 tig:
-	emerge -uDN tig
-
-tig:
 	emerge -uN tig
 
 # ============================================================================
