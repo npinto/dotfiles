@@ -89,6 +89,7 @@ atlas: cpufrequtils
 	eselect lapack set atlas || exit 0
 
 numpy: portage-dirs atlas
+	echo 'x11-base/xorg-server xvfb' > ${EPREFIX}/etc/portage/package.use/numpy
 	echo "dev-python/numpy doc lapack test" > ${EPREFIX}/etc/portage/package.use/numpy
 	emerge -uDN --onlydeps numpy
 	FEATURES=test emerge -uDN numpy
