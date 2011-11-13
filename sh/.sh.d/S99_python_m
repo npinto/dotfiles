@@ -1,2 +1,2 @@
+alias cProfile='python -m cProfile'
 alias pstats='python -m pstats'
-alias cProfile='python -m pstats'
