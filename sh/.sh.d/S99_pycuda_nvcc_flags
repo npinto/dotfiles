@@ -1,0 +1,7 @@
+
+export PYCUDA_DEFAULT_NVCC_FLAGS='--opencc-options=-v,-OPT:0limit=0,-O3,-LIST:source=on --ptxas-options=-v'
+
+COMPILER_BINDIR=/usr/x86_64-pc-linux-gnu/gcc-bin/4.4.5
+if [[ -d ${COMPILER_BINDIR} ]]; then
+    export PYCUDA_DEFAULT_NVCC_FLAGS="--compiler-bindir=${COMPILER_BINDIR} ${PYCUDA_DEFAULT_NVCC_FLAGS}";
+fi;
