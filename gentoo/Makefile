@@ -62,6 +62,7 @@ python27:
 	echo "dev-lang/python sqlite" > /etc/portage/package.use/python
 	eselect python set python2.7
 	python-updater
+	emerge --update --newuse --deep --with-bdeps=y @world
 	emerge --depclean 
 	revdep-rebuild
 	eselect python set python2.7 || exit 0
