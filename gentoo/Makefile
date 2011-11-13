@@ -1,10 +1,11 @@
+include init.mk
 
 all: system tools scientific
 
 # ============================================================================
 # -- System
 # ============================================================================
-system: portage-dirs world-use sudo netselect lsof
+system: portage-dirs world-use sudo netselect lsof nfs-utils
 
 portage-dirs:
 	mkdir -p /etc/portage/package.keywords
@@ -18,75 +19,86 @@ world-use: portage-dirs
 	echo 'x11-libs/pango X' > /etc/portage/package.use/pango
 
 sudo:
-	emerge -uN sudo
+	emerge -uDN sudo
 
 netselect:
-	emerge -uN netselect
+	emerge -uDN netselect
 
 lsof:
-	emerge -uN lsof
+	emerge -uDN lsof
 
 cpufrequtils:
-	emerge -uN sys-power/cpufrequtils
+	emerge -uDN sys-power/cpufrequtils
+
+nfs-utils:
+	emerge -uDN net-fs/nfs-utils
 
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop keychain gparallel pip
+tools: zsh vim tmux screen htop keychain gparallel pip python27 tig
 
 zsh:
-	emerge -uN zsh
+	emerge -uDN zsh
 
 vim: portage-dirs
 	echo "app-editors/vim bash-completion vim-pager python ruby" > /etc/portage/package.use/vim
-	emerge -uN vim{,-core}
+	emerge -uDN vim{,-core}
 
 tmux:
-	emerge -uN tmux
+	emerge -uDN tmux
 
 screen:
-	emerge -uN screen
+	emerge -uDN screen
 
 htop:
-	emerge -uN htop
+	emerge -uDN htop
 
 keychain:
-	emerge -uN keychain
+	emerge -uDN keychain
+
+python27:
+	emerge -uDN '=python-2.7*'
+	eselect python set python2.7 || exit 0
 
 gparallel:
 	echo "sys-process/parallel ~amd64" > /etc/portage/package.keywords/gparallel
-	emerge -uN sys-process/parallel
+	emerge -uDN sys-process/parallel
 
-pip:
+pip: python27
 	echo 'dev-python/pip ~amd64' > /etc/portage/package.keywords/pip
-	emerge -uN dev-python/pip
+	emerge -uDN dev-python/pip
+
+tig:
+	emerge -uN tig
 
 # ============================================================================
 # -- Scientific
 # ============================================================================
-scientific: atlas numpy scipy
+scientific: atlas numpy scipy ipython joblib scikits.learn
 
 atlas: cpufrequtils
 	cpufreq-set -g performance
 	# -- blas
-	emerge -uN cblas blas
-	emerge -uN blas-atlas
+	emerge -uDN cblas blas
+	emerge -uDN blas-atlas
 	eselect blas set atlas-threads || exit 0
 	eselect cblas set atlas-threads || exit 0
 	# -- lapack
-	emerge -uN lapack
-	emerge -uN lapack-atlas
+	emerge -uDN lapack
+	emerge -uDN lapack-atlas
 	eselect lapack set atlas || exit 0
 
-numpy: portage-dirs atlas
-	echo "dev-python/numpy doc lapack test" > ${EPREFIX}/etc/portage/package.use/numpy
-	emerge -uN --onlydeps numpy
-	FEATURES=test emerge -uN numpy
+numpy: portage-dirs python27 atlas
+	echo 'x11-base/xorg-server xvfb' > ${EPREFIX}/etc/portage/package.use/numpy
+	echo "dev-python/numpy doc lapack test" >> ${EPREFIX}/etc/portage/package.use/numpy
+	emerge -uDN --onlydeps numpy
+	FEATURES=test emerge -uN --nodeps numpy
 
 scipy: numpy
 	emerge -uDN --onlydeps scipy
-	# #FEATURES=test emerge -uN scipy
-	emerge -uN scipy
+	# #FEATURES=test emerge -uDN scipy
+	emerge -uDN scipy
 
 ipython: pip
 	pip install -vUI ipython
@@ -104,8 +116,9 @@ scikits.learn: pip
 # -- MISC
 # ============================================================================
 graphviz:
-	emerge -uN media-gfx/graphviz
+	emerge -uDN media-gfx/graphviz
 
 gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
-	emerge -uN dev-util/gprof2dot
+	emerge -uDN dev-util/gprof2dot
+
