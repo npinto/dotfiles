@@ -90,8 +90,8 @@ set expandtab
 " tab inserts blanks according to 'shiftwidth'
 set smarttab
 
-" text width at 74 characters (best to view 4 vertical windows on 30'' screen)
-set textwidth=74
+" text width at 73 characters (best to view 4 vertical windows on 30'' screen)
+set textwidth=73
 
 " ------------------------------------------
 " -- Syntax Highlighting
