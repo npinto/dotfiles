@@ -58,12 +58,11 @@ keychain:
 	emerge -uDN keychain
 
 python27:
-	emerge -uDN '=python-2.7*'
 	echo "dev-lang/python sqlite" > /etc/portage/package.use/python
 	eselect python set python2.7
 	python-updater
 	emerge --update --newuse --deep --with-bdeps=y @world
-	emerge --depclean 
+	emerge --depclean
 	revdep-rebuild
 	eselect python set python2.7 || exit 0
 
@@ -128,3 +127,5 @@ gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
 	emerge -uDN dev-util/gprof2dot
 
+gthumb:
+	emerbe -UDN media-gfx/gthumb
