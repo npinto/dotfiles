@@ -58,7 +58,12 @@ keychain:
 	emerge -uDN keychain
 
 python27:
-	emerge -uDN '=python-2.7*'
+	echo "dev-lang/python sqlite" > /etc/portage/package.use/python
+	eselect python set python2.7
+	python-updater
+	emerge --update --newuse --deep --with-bdeps=y @world
+	emerge --depclean
+	revdep-rebuild
 	eselect python set python2.7 || exit 0
 
 gparallel:
@@ -68,9 +73,6 @@ gparallel:
 pip: python27
 	echo 'dev-python/pip ~amd64' > /etc/portage/package.keywords/pip
 	emerge -uDN dev-python/pip
-
-tig:
-	emerge -uDN tig
 
 tig:
 	emerge -uN tig
@@ -93,10 +95,10 @@ atlas: cpufrequtils
 	eselect lapack set atlas || exit 0
 
 numpy: portage-dirs python27 atlas
-	echo "dev-python/numpy doc lapack test" > ${EPREFIX}/etc/portage/package.use/numpy
-	echo "x11-base/xorg-server xvfb" > ${EPREFIX}/etc/portage/package.use/numpy
+	echo 'x11-base/xorg-server xvfb' > ${EPREFIX}/etc/portage/package.use/numpy
+	echo "dev-python/numpy doc lapack test" >> ${EPREFIX}/etc/portage/package.use/numpy
 	emerge -uDN --onlydeps numpy
-	FEATURES=test emerge -uDN numpy
+	FEATURES=test emerge -uN --nodeps numpy
 
 scipy: numpy
 	emerge -uDN --onlydeps scipy
