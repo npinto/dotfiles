@@ -127,3 +127,5 @@ gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
 	emerge -uDN dev-util/gprof2dot
 
+gthumb:
+	emerbe -UDN media-gfx/gthumb
