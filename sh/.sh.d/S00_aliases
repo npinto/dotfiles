@@ -97,21 +97,6 @@ alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
 
 # -----------------------------------------------------------------------------
-# -- SSH related
-# -----------------------------------------------------------------------------
-#ssh-push-pub-key() {
-    #fname=$1;
-    #host=$2;
-    #if [ "$(echo $fname | tail -c 5)" = ".pub" ]; then
-        #cat $fname | ssh $host 'mkdir -p ~/.ssh && cd ~/.ssh && touch authorized_keys && chmod 640 authorized_keys && cat >> authorized_keys';
-    #else
-        ###echo "Wrong extension detected! Use a public key with extension .pub!!!";
-        ###echo "Usage: $0 /path/to/key.pub user@host";
-        ###return 1
-    #fi
-#}
-
-# -----------------------------------------------------------------------------
 # -- Kernel
 # -----------------------------------------------------------------------------
 alias install_kernel_x86_64="export KERNEL_SUFFIX=\$(make modules_install | grep DEPMOD | awk '{print \$2}') && echo \$KERNEL_SUFFIX && cp -vf arch/x86_64/boot/bzImage /boot/kernel-\${KERNEL_SUFFIX} && cp -vf .config /boot/config-\${KERNEL_SUFFIX} && cp -vf System.map /boot/System.map-\${KERNEL_SUFFIX}"
