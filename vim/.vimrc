@@ -440,8 +440,8 @@ set smartcase
 "" not even sure if this works, don't really use it
 "autocmd FileType python set omnifunc=pythoncomplete#Complete
 "" ctrl-space to omnicomplete
-""inoremap <Nul> <C-x><C-o> 
-"inoremap <Nul> <space>  
+""inoremap <Nul> <C-x><C-o>
+"inoremap <Nul> <space>
 "set suffixesadd+=.c,.cpp,.h,.java,.l,.py,.cu,.rst,
 ""set background=dark
 ""let's see if this is any good
@@ -510,6 +510,14 @@ let g:pyflakes_use_quickfix = 0
   "endif
   "let &makeprg = savemp
 "endfunction
+
+" ------------------------------------------
+" -- OverLength Highlight
+" ------------------------------------------
+
+au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
+au FileType python match OverLength /\%81v.\+/
+
 
 " ------------------------------------------
 " -- MISC
