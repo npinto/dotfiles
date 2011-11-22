@@ -108,8 +108,11 @@ scipy: numpy
 ipython: pip
 	pip install -vUI ipython
 
-pycuda: pip
-	pip install -vUI pycuda
+#pycuda: pip
+pycuda:
+	#pip install -vUI pycuda
+	echo 'dev-libs/boost python' > ${EPREFIX}/etc/portage/package.use/pycuda
+	emerge -uDN pycuda
 
 joblib: pip
 	pip install -vUI joblib
@@ -128,4 +131,12 @@ gprof2dot: graphviz
 	emerge -uDN dev-util/gprof2dot
 
 gthumb:
-	emerbe -UDN media-gfx/gthumb
+	emerbe -uDN media-gfx/gthumb
+
+sun-jdk:
+	echo 'dev-java/sun-jdk Oracle-BCLA-JavaSE' > ${EPREFIX}/etc/portage/package.license/sun-jdk
+	emerge -uDN dev-java/sun-jdk
+
+boost:
+
+	
