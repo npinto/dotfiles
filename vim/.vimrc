@@ -90,6 +90,9 @@ set expandtab
 " tab inserts blanks according to 'shiftwidth'
 set smarttab
 
+" text width at 73 characters (best to view 4 vertical windows on 30'' screen)
+set textwidth=73
+
 " ------------------------------------------
 " -- Syntax Highlighting
 " ------------------------------------------
@@ -204,6 +207,68 @@ function! MyLastWindow()
     endif
   endif
 endfunction
+
+" ------------------------------------------
+" -- Window Navigation
+" ------------------------------------------
+
+" From http://stackoverflow.com/questions/2228353/how-to-swap-files-between-windows-in-vim
+if version >= 700
+
+    function! HOpen(dir,what_to_open)
+
+        let [type,name] = a:what_to_open
+
+        if a:dir=='left' || a:dir=='right'
+            vsplit
+        elseif a:dir=='up' || a:dir=='down'
+            split
+        end
+
+        if a:dir=='down' || a:dir=='right'
+            exec "normal! \<c-w>\<c-w>"
+        end
+
+        if type=='buffer'
+            exec 'buffer '.name
+        else
+            exec 'edit '.name
+        end
+    endfunction
+
+    function! HYankWindow()
+        let g:window = winnr()
+        let g:buffer = bufnr('%')
+        let g:bufhidden = &bufhidden
+    endfunction
+
+    function! HDeleteWindow()
+        call HYankWindow()
+        set bufhidden=hide
+        close
+    endfunction
+
+    function! HPasteWindow(direction)
+        let old_buffer = bufnr('%')
+        call HOpen(a:direction,['buffer',g:buffer])
+        let g:buffer = old_buffer
+        let &bufhidden = g:bufhidden
+    endfunction
+
+    noremap <c-w>d :call HDeleteWindow()<cr>
+    noremap <c-w>y :call HYankWindow()<cr>
+    noremap <c-w>p<up> :call HPasteWindow('up')<cr>
+    noremap <c-w>p<down> :call HPasteWindow('down')<cr>
+    noremap <c-w>p<left> :call HPasteWindow('left')<cr>
+    noremap <c-w>p<right> :call HPasteWindow('right')<cr>
+    noremap <c-w>pk :call HPasteWindow('up')<cr>
+    noremap <c-w>pj :call HPasteWindow('down')<cr>
+    noremap <c-w>ph :call HPasteWindow('left')<cr>
+    noremap <c-w>pl :call HPasteWindow('right')<cr>
+    noremap <c-w>pp :call HPasteWindow('here')<cr>
+    noremap <c-w>P :call HPasteWindow('here')<cr>
+
+endif
 
 
 " ------------------------------------------
@@ -357,14 +422,60 @@ set smartcase
 " -- Auto Completion
 " ------------------------------------------
 " SuperTab Options
-let g:SuperTabDefaultCompletionType = "context"
-let g:SuperTabRetainCompletionDuration = "completion"
-let g:SuperTabNoCompleteAfter = [',', '\s']
-let g:SuperTabLongestEnhanced = 1
+"let g:SuperTabDefaultCompletionType = "context"
+"let g:SuperTabRetainCompletionDuration = "completion"
+"let g:SuperTabNoCompleteAfter = [',', '\s']
+"let g:SuperTabLongestEnhanced = 1
 "let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
 "filetype plugin on
 "autocmd FileType python set omnifunc=pythoncomplete#Complete
 "set ofu=syntaxcomplete#Complete
+
+" Remap <C-x> <C-n> to <c-space>
+"inoremap <Nul> <C-x><C-n>
+
+" From Paul Ivanov:
+""
+"" XXX: i think this is slow in large projects!
+"" not even sure if this works, don't really use it
+"autocmd FileType python set omnifunc=pythoncomplete#Complete
+"" ctrl-space to omnicomplete
+""inoremap <Nul> <C-x><C-o>
+"inoremap <Nul> <space>
+"set suffixesadd+=.c,.cpp,.h,.java,.l,.py,.cu,.rst,
+""set background=dark
+""let's see if this is any good
+""set clipboard=unnamed
+""filetype on
+""filetype indent on
+"filetype plugin indent on
+""colorscheme kate
+""colorscheme wombat
+"colorscheme tortepi
+"colorscheme blue
+""highlight Comment ctermbg=darkgreen guifg=darkgreen
+"set spelllang=en,ru
+"command! SpellCheck :set spell
+"command! Spell :!aspell -c "%"
+"command! T :Tlist
+"" don't use this anymore - use rubber instead
+"" command! Latex :set makeprg=latex\ %\ &&\ dvipdf\ %<.dvi
+""iab ,b \begin{}<Esc>i
+""iab ,e \end{}<Esc>i
+""iab ,m $$ $$hh
+""iab ., {}h
+"map <F8> :make<cr><cr>
+"map <F7> :w!<CR>:Spell<CR>:e! %<CR>
+"map <F6> :w!<CR>:!wc %<CR>
+"map <F2> :!sort -n<CR>
+"map <F4> :Todo<CR>
+
+" Speed up switching between splits
+map <C-J> <C-W>j
+map <C-K> <C-W>k
+map <C-h> <C-W>h
+map <C-l> <C-W>l
+
 
 " ------------------------------------------
 " -- Python related
@@ -399,6 +510,14 @@ let g:pyflakes_use_quickfix = 0
   "endif
   "let &makeprg = savemp
 "endfunction
+
+" ------------------------------------------
+" -- OverLength Highlight
+" ------------------------------------------
+
+au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
+au FileType python match OverLength /\%81v.\+/
+
 
 " ------------------------------------------
 " -- MISC

@@ -77,6 +77,7 @@ alias gcount='git shortlog -sn'
 alias gcp='git cherry-pick'
 alias glg='git log --stat --max-count=5'
 alias gcimno="git commit -m 'no comment'"
+alias gq='ga -u && gl && gcimno && gp'
 
 # Git and svn mix
 alias git-svn-dcommit-push='git svn dcommit && git push github master:svntrunk'
@@ -94,21 +95,6 @@ function current_branch() {
 alias ggpull='git pull origin $(current_branch)'
 alias ggpush='git push origin $(current_branch)'
 alias ggpnp='git pull origin $(current_branch) && git push origin $(current_branch)'
-
-# -----------------------------------------------------------------------------
-# -- SSH related
-# -----------------------------------------------------------------------------
-ssh-push-pub-key() {
-    fname=$1;
-    host=$2;
-    if [ "$(echo $fname | tail -c 5)" = ".pub" ]; then
-        cat $fname | ssh $host 'mkdir -p ~/.ssh && cd ~/.ssh && touch authorized_keys && chmod 640 authorized_keys && cat >> authorized_keys';
-    else
-        echo "Wrong extension detected! Use a public key with extension .pub!!!";
-        echo "Usage: $0 /path/to/key.pub user@host";
-        return 1
-    fi
-}
 
 # -----------------------------------------------------------------------------
 # -- Kernel

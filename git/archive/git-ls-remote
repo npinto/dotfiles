@@ -1,0 +1,59 @@
+#!/bin/bash
+
+set -e
+
+function sync_remote_branches {
+    r=$1
+    echo ----------------- sync remote $r
+
+    rb=$(git-ls-remote -h $r | awk '{ print $2 }' | grep -v -e /origin$ -e /master$)
+
+    for b in $rb ; do
+            bn=$(echo $b | sed 's,^refs/heads/,,')
+            if ! ( grep -q -e "^Pull: *$b:" -e "^Pull: *$bn" .git/refs/remotes/$r ) ; then
+                    echo "  +++ adding $b to .git/remotes/$r"
+
+                    echo "Pull: $b:$b" >> .git/remotes/$r
+            fi
+    done
+
+}
+
+DIRS=$@
+if [ -z "$DIRS" ] ; then
+        DIRS=$(echo */.git/../)
+elif ! [ -d "$1" ] ; then
+        echo "$1: not a directory" >&2
+        exit 1
+fi
+
+for d in $DIRS ; do
+    (
+    cd $d
+
+    echo
+    echo ================= $(pwd)
+    echo
+
+    [ -d .git/remotes ] || exit 1
+    [ -d .git/branches ] || exit 1
+    [ -d .git/refs/heads ] || exit 1
+
+    remotes=$(cd .git/remotes/ && ls | grep -v '~$' || true)
+    for o in $remotes ; do
+            sync_remote_branches $o
+
+            echo ----------------- fetch remote $o
+            git fetch $o
+    done
+
+    branches=$(cd .git/branches/ && ls | grep -v '~$' || true)
+    for o in $branches ; do
+            echo ----------------- fetch branch $o
+            git fetch $o
+    done
+
+    echo ----------------- repack
+    git repack -d 
+    )
+done

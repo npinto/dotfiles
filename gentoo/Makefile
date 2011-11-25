@@ -36,7 +36,7 @@ nfs-utils:
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop keychain gparallel pip tig terminator
+tools: zsh vim tmux screen htop keychain gparallel pip python27 tig terminator
 
 zsh:
 	emerge -uDN zsh
@@ -57,11 +57,20 @@ htop:
 keychain:
 	emerge -uDN keychain
 
+python27:
+	echo "dev-lang/python sqlite" > /etc/portage/package.use/python
+	eselect python set python2.7
+	python-updater
+	emerge --update --newuse --deep --with-bdeps=y @world
+	emerge --depclean
+	revdep-rebuild
+	eselect python set python2.7 || exit 0
+
 gparallel:
 	echo "sys-process/parallel ~amd64" > /etc/portage/package.keywords/gparallel
 	emerge -uDN sys-process/parallel
 
-pip:
+pip: python27
 	echo 'dev-python/pip ~amd64' > /etc/portage/package.keywords/pip
 	emerge -uDN dev-python/pip
 
@@ -89,10 +98,11 @@ atlas: cpufrequtils
 	emerge -uDN lapack-atlas
 	eselect lapack set atlas || exit 0
 
-numpy: portage-dirs atlas
-	echo "dev-python/numpy doc lapack test" > ${EPREFIX}/etc/portage/package.use/numpy
+numpy: portage-dirs python27 atlas
+	echo 'x11-base/xorg-server xvfb' > ${EPREFIX}/etc/portage/package.use/numpy
+	echo "dev-python/numpy doc lapack test" >> ${EPREFIX}/etc/portage/package.use/numpy
 	emerge -uDN --onlydeps numpy
-	FEATURES=test emerge -uDN numpy
+	FEATURES=test emerge -uN --nodeps numpy
 
 scipy: numpy
 	emerge -uDN --onlydeps scipy
@@ -102,8 +112,11 @@ scipy: numpy
 ipython: pip
 	pip install -vUI ipython
 
-pycuda: pip
-	pip install -vUI pycuda
+#pycuda: pip
+pycuda:
+	#pip install -vUI pycuda
+	echo 'dev-libs/boost python' > ${EPREFIX}/etc/portage/package.use/pycuda
+	emerge -uDN pycuda
 
 joblib: pip
 	pip install -vUI joblib
@@ -121,3 +134,13 @@ gprof2dot: graphviz
 	echo 'dev-util/gprof2dot ~amd64' > ${EPREFIX}/etc/portage/package.keywords/gprof2dot
 	emerge -uDN dev-util/gprof2dot
 
+gthumb:
+	emerbe -uDN media-gfx/gthumb
+
+sun-jdk:
+	echo 'dev-java/sun-jdk Oracle-BCLA-JavaSE' > ${EPREFIX}/etc/portage/package.license/sun-jdk
+	emerge -uDN dev-java/sun-jdk
+
+boost:
+
+	
