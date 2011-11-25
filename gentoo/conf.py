@@ -25,4 +25,7 @@ def dispatch_conf():
         sed(conffn, search, replace)
         run("grep %s %s" % (replace, conffn))
 
+    #run("yes 'u\n' | dispatch-conf", pty=True)
+    #from fabric.operations import open_shell
     run("dispatch-conf")
+    #open_shell("dispatch-conf")

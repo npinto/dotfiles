@@ -1,10 +1,11 @@
 from fabric.api import run, cd, env
 from fabric.api import task
 from fabric.contrib.files import sed
+from fabric.contrib.files import append
 
 
 @task
-def emerge(ask=True):
+def update(ask='True'):
 
     ask = eval(ask)
 
@@ -22,9 +23,27 @@ def emerge(ask=True):
     if 'Nothing to merge' not in out:
         run(emergecmd + " -v --depclean")
         if ask:
-            run("revdep-rebuild -v -- --ask")
+            run("revdep-rebuild -qq -- --ask")
         else:
-            run("revdep-rebuild -v --")
+            run("revdep-rebuild -qq")
         run("eclean-dist -d")
         run("eix-test-obsolete")
-    #dispatch-conf'\'
+
+
+@task
+def parted():
+    run('emerge -q -uDN parted')
+    run('parted -l')
+
+
+@task
+def layman():
+    run("layman -S")
+    run("emerge -q -uDN layman")
+    append('/etc/make.conf', 'source /var/lib/layman/make.conf')
+
+
+@task
+def emerge():
+    layman()
+    parted()
