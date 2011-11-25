@@ -36,7 +36,7 @@ nfs-utils:
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop keychain gparallel pip tig
+tools: zsh vim tmux screen htop keychain gparallel pip tig terminator
 
 zsh:
 	emerge -uDN zsh
@@ -68,8 +68,9 @@ pip:
 tig:
 	emerge -uDN tig
 
-tig:
-	emerge -uN tig
+terminator:
+	echo 'x11-libs/vte python' > /etc/portage/package.use/terminator
+	emerge -uDN x11-terms/terminator
 
 # ============================================================================
 # -- Scientific
