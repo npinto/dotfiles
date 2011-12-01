@@ -36,7 +36,7 @@ nfs-utils:
 # ============================================================================
 # -- Tools
 # ============================================================================
-tools: zsh vim tmux screen htop keychain gparallel pip python27 tig
+tools: zsh vim tmux screen htop keychain gparallel pip python27 tig terminator
 
 zsh:
 	emerge -uDN zsh
@@ -75,7 +75,11 @@ pip: python27
 	emerge -uDN dev-python/pip
 
 tig:
-	emerge -uN tig
+	emerge -uDN tig
+
+terminator:
+	echo 'x11-libs/vte python' > /etc/portage/package.use/terminator
+	emerge -uDN x11-terms/terminator
 
 # ============================================================================
 # -- Scientific
@@ -108,8 +112,11 @@ scipy: numpy
 ipython: pip
 	pip install -vUI ipython
 
-pycuda: pip
-	pip install -vUI pycuda
+#pycuda: pip
+pycuda:
+	#pip install -vUI pycuda
+	echo 'dev-libs/boost python' > ${EPREFIX}/etc/portage/package.use/pycuda
+	emerge -uDN pycuda
 
 joblib: pip
 	pip install -vUI joblib
@@ -128,4 +135,12 @@ gprof2dot: graphviz
 	emerge -uDN dev-util/gprof2dot
 
 gthumb:
-	emerbe -UDN media-gfx/gthumb
+	emerbe -uDN media-gfx/gthumb
+
+sun-jdk:
+	echo 'dev-java/sun-jdk Oracle-BCLA-JavaSE' > ${EPREFIX}/etc/portage/package.license/sun-jdk
+	emerge -uDN dev-java/sun-jdk
+
+boost:
+
+	

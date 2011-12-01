@@ -90,8 +90,45 @@ set expandtab
 " tab inserts blanks according to 'shiftwidth'
 set smarttab
 
-" text width at 73 characters (best to view 4 vertical windows on 30'' screen)
-set textwidth=73
+" text width at 72 characters (best to view 4 vertical windows on 30'' screen)
+"set textwidth=72
+set textwidth=0
+
+function! GetPythonTextWidth()
+    if !exists('g:python_normal_text_width')
+        let normal_text_width = 79
+    else
+        let normal_text_width = g:python_normal_text_width
+    endif
+
+    if !exists('g:python_comment_text_width')
+        let comment_text_width = 72
+    else
+        let comment_text_width = g:python_comment_text_width
+    endif
+
+    let cur_syntax = synIDattr(synIDtrans(synID(line("."), col("."), 0)), "name")
+    if cur_syntax == "Comment"
+        return comment_text_width
+    elseif cur_syntax == "String"
+        " Check to see if we're in a docstring
+        let lnum = line(".")
+        while lnum >= 1 && (synIDattr(synIDtrans(synID(lnum, col([lnum, "$"]) - 1, 0)), "name") == "String" || match(getline(lnum), '\v^\s*$') > -1)
+            if match(getline(lnum), "\\('''\\|\"\"\"\\)") > -1
+                " Assume that any longstring is a docstring
+                return comment_text_width
+            endif
+            let lnum -= 1
+        endwhile
+    endif
+
+    return normal_text_width
+endfunction
+
+augroup pep8
+    au!
+    autocmd CursorMoved,CursorMovedI * :if &ft == 'python' | :exe 'setlocal textwidth='.GetPythonTextWidth() | :endif
+augroup END
 
 " ------------------------------------------
 " -- Syntax Highlighting
@@ -354,7 +391,8 @@ set modeline
 " Use substitute() instead of printf() to handle '%%s' modeline in LaTeX
 " files.
 function! AppendModeline()
-  let l:modeline = printf(" vim: set ts=%d sw=%d tw=%d :",
+  "let l:modeline = printf(" vim: set ts=%d sw=%d tw=%d :",
+  let l:modeline = printf(" vim: set ts=%d sw=%d :",
         \ &tabstop, &shiftwidth, &textwidth)
   let l:modeline = substitute(&commentstring, "%s", l:modeline, "")
   call append(line("$"), l:modeline)
@@ -394,6 +432,15 @@ command! -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 
 " Make the backspace key wrap lines
 "set backspace=indent,eol,start
+
+" When editing a text file, if you want word wrapping, but only want line
+" breaks inserted when you explicitly press the Enter key:
+" (see http://vim.wikia.com/wiki/Word_wrap_without_line_breaks)
+"set wrap
+"set linebreak
+"set nolist  " list disables linebreak
+"set wrapmargin=0
+
 
 " Put (vim) at the end of the window title
 set title titlestring=%t\ (vim)
@@ -440,8 +487,8 @@ set smartcase
 "" not even sure if this works, don't really use it
 "autocmd FileType python set omnifunc=pythoncomplete#Complete
 "" ctrl-space to omnicomplete
-""inoremap <Nul> <C-x><C-o> 
-"inoremap <Nul> <space>  
+""inoremap <Nul> <C-x><C-o>
+"inoremap <Nul> <space>
 "set suffixesadd+=.c,.cpp,.h,.java,.l,.py,.cu,.rst,
 ""set background=dark
 ""let's see if this is any good
@@ -510,6 +557,15 @@ let g:pyflakes_use_quickfix = 0
   "endif
   "let &makeprg = savemp
 "endfunction
+
+" ------------------------------------------
+" -- OverLength Highlight
+" ------------------------------------------
+
+"au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
+au FileType python highlight OverLength ctermbg=red ctermfg=white guibg=#592929
+au FileType python match OverLength /\%81v.\+/
+
 
 " ------------------------------------------
 " -- MISC
