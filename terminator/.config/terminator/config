@@ -14,10 +14,11 @@
   switch_to_tab_9 = <Alt>9
 [profiles]
   [[default]]
-    scrollbar_position = hidden
-    scrollback_lines = 1000000
     use_system_font = False
+    scrollback_lines = 1000000
+    scrollbar_position = hidden
     scroll_on_output = False
+    allow_bold = False
     font = Monospace 8
     scrollback_infinite = True
 [layouts]
