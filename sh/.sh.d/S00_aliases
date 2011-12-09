@@ -140,3 +140,4 @@ psgrep() {
 
 bu () { cp $1 ~/.backup/`basename $1`-`date +%Y%m%d%H%M`.backup ; }
 
+sha1sum-indir () { echo $1.sha1; (cd $(dirname $1); sha1sum $(basename $1) > $(basename $1).sha1); }
