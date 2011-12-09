@@ -123,6 +123,7 @@ extract () {
         echo "'$1' is not a valid file"
     fi
 }
+alias x=extract
 
 grab() {
     sudo chown -R ${USER} ${1:-.}
