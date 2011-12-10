@@ -140,6 +140,6 @@ psgrep() {
 
 bu () { cp $1 ~/.backup/`basename $1`-`date +%Y%m%d%H%M`.backup ; }
 
-hash-indir () { echo $2.$1; (cd $(dirname $2); ${1}sum $(basename $2) > $(basename $2).$1); }
-md5sum-indir () { hash-indir md5 $1 }
-sha1sum-indir () { hash-indir sha1 $1 }
+function hash_indir { echo $2.$1; (cd $(dirname $2); ${1}sum $(basename $2) > $(basename $2).$1); }
+md5sum_indir () { hash_indir md5 $1 }
+sha1sum_indir () { hash_indir sha1 $1 }
