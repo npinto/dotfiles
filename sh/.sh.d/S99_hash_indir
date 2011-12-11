@@ -1,7 +1,9 @@
 function hash_indir {
     if [ ! "$#" -eq 2 ]; then
         echo "Usage: $0 <hashfunction> <filename>";
-        echo "<hasfunction>: 'sha1' or 'md5'";
+        echo;
+        echo "Supported <hashfunction>: 'sha1' or 'md5'";
+        echo;
         return 1;
     fi
     echo $2.$1;
@@ -10,7 +12,7 @@ function hash_indir {
 
 function md5sum_indir {
     if [ ! "$#" -eq 1 ]; then
-        echo "Usage: $0 <filename>;
+        echo "Usage: $0 <filename>";
         return 1;
     fi;
     hash_indir md5 $1
@@ -18,7 +20,7 @@ function md5sum_indir {
 
 function sha1sum_indir {
     if [ ! "$#" -eq 1 ]; then
-        echo "Usage: $0 <filename>;
+        echo "Usage: $0 <filename>";
         return 1;
     fi;
     hash_indir sha1 $1
