@@ -1,0 +1,3 @@
+function find_bad_symlink {
+    find -L $1 -type l -lname '*';
+}
