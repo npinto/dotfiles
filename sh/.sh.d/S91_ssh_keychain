@@ -1,8 +1,8 @@
 # -----------------------------------------------------------------------------
 # -- ssh keychain / ssh-agent
 # -----------------------------------------------------------------------------
-#if [ "$(test ! -f ${HOME}/.no_keychain && command -v keychain && test -f ~/.bashrc)" ]; then
-if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
+#if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
+if [ "$(test -f ${HOME}/.keychain.enable && command -v keychain && test -f ~/.bashrc)" ]; then
     for f in ~/.ssh/id_?sa; do
         keychain --noask $f &> /dev/null;
     done;
