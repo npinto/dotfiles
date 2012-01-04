@@ -2,9 +2,12 @@
 # -- ssh keychain / ssh-agent
 # -----------------------------------------------------------------------------
 #if [ "$(command -v keychain && test -f ~/.bashrc)" ]; then
+#set -e
+#set -x
 if [ "$(test -f ${HOME}/.keychain.enable && command -v keychain && test -f ~/.bashrc)" ]; then
     for f in ~/.ssh/id_?sa; do
-        keychain --noask $f &> /dev/null;
+        # keychain --noask $f &> /dev/null;
+        keychain $f &> /dev/null;
     done;
     . ~/.keychain/$(hostname)-sh;
 fi
