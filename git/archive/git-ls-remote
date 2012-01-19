@@ -10,7 +10,7 @@ function sync_remote_branches {
 
     for b in $rb ; do
             bn=$(echo $b | sed 's,^refs/heads/,,')
-            if ! ( grep -q -e "^Pull: *$b:" -e "^Pull: *$bn" .git/refs/remotes/$r ) ; then
+            if ! ( grep -q -e "^Pull: *$b:" -e "^Pull: *$bn" .git/remotes/$r ) ; then
                     echo "  +++ adding $b to .git/remotes/$r"
 
                     echo "Pull: $b:$b" >> .git/remotes/$r
