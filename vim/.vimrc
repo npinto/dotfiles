@@ -1,6 +1,6 @@
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- pathogen
-" ------------------------------------------
+" -------------------------------------------------------------------
 call pathogen#runtime_append_all_bundles()
 call pathogen#helptags()
 
@@ -8,9 +8,10 @@ call pathogen#helptags()
 filetype plugin on
 filetype plugin indent on
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- colorscheme
-" ------------------------------------------
+" -------------------------------------------------------------------
 if $TERM =~ '^linux'
     set t_Co=8
 else
@@ -19,9 +20,10 @@ else
     "colorscheme ir_black
 endif
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- Keybindings
-" ------------------------------------------
+" -------------------------------------------------------------------
 " set leader key
 let mapleader=","
 
@@ -66,9 +68,9 @@ command! -bar -range=% SwapEqual :<line1>,<line2>s/\(\s*\)\([^=]*\)\s\+=\s\+\([^
 nohl
 
 
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Indentation
-" ------------------------------------------
+" -------------------------------------------------------------------
 " copy indent from current line when starting new line
 set autoindent
 " indent based on {}
@@ -79,9 +81,10 @@ set smartindent
 set cindent
 filetype indent on
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- Tabs/Spaces
-" ------------------------------------------
+" -------------------------------------------------------------------
 set tabstop=4 softtabstop=4 shiftwidth=4
 
 " convert tabs to spaces
@@ -90,50 +93,11 @@ set expandtab
 " tab inserts blanks according to 'shiftwidth'
 set smarttab
 
-" text width at 72 characters (best to view 4 vertical windows on 30'' screen)
-"set textwidth=72
-set textwidth=0
-
-function! GetPythonTextWidth()
-    if !exists('g:python_normal_text_width')
-        let normal_text_width = 79
-    else
-        let normal_text_width = g:python_normal_text_width
-    endif
-
-    if !exists('g:python_comment_text_width')
-        let comment_text_width = 72
-    else
-        let comment_text_width = g:python_comment_text_width
-    endif
-
-    let cur_syntax = synIDattr(synIDtrans(synID(line("."), col("."), 0)), "name")
-    if cur_syntax == "Comment"
-        return comment_text_width
-    elseif cur_syntax == "String"
-        " Check to see if we're in a docstring
-        let lnum = line(".")
-        while lnum >= 1 && (synIDattr(synIDtrans(synID(lnum, col([lnum, "$"]) - 1, 0)), "name") == "String" || match(getline(lnum), '\v^\s*$') > -1)
-            if match(getline(lnum), "\\('''\\|\"\"\"\\)") > -1
-                " Assume that any longstring is a docstring
-                return comment_text_width
-            endif
-            let lnum -= 1
-        endwhile
-    endif
-
-    return normal_text_width
-endfunction
-
-augroup pep8
-    au!
-    autocmd CursorMoved,CursorMovedI * :if &ft == 'python' | :exe 'setlocal textwidth='.GetPythonTextWidth() | :endif
-augroup END
-
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Syntax Highlighting
-" ------------------------------------------
-"" syntax
+" -------------------------------------------------------------------
+
+" syntax
 syntax on
 
 " syntax for .cu files
@@ -154,9 +118,10 @@ highlight SpellBad ctermbg=darkgray
 au BufRead,BufNewFile *.e{build,class} let is_bash=1|setfiletype sh
 au BufRead,BufNewFile *.e{build,class} set ts=4 sw=4 noexpandtab
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- Visuals
-" ------------------------------------------
+" -------------------------------------------------------------------
 " numbers
 set number
 
@@ -210,18 +175,18 @@ nmap <silent> <leader>/ :nohlsearch<CR>
 " Disable all blinking:
 set guicursor+=a:blinkon0
 
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Mouse Support
-" ------------------------------------------
+" -------------------------------------------------------------------
 set mouse=a
 
 " get around the "/dev/gpmctl: No such file or directory"
 " bug with set mouse=a
 set ttymouse=xterm2
 
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Buffer Navigation
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- miniBufExpl plugin
 let g:miniBufExplMapWindowNavVim = 1
 let g:miniBufExplMapWindowNavArrows = 1
@@ -245,9 +210,10 @@ function! MyLastWindow()
   endif
 endfunction
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- Window Navigation
-" ------------------------------------------
+" -------------------------------------------------------------------
 
 " From http://stackoverflow.com/questions/2228353/how-to-swap-files-between-windows-in-vim
 if version >= 700
@@ -258,7 +224,7 @@ if version >= 700
 
         if a:dir=='left' || a:dir=='right'
             vsplit
-        elseif a:dir=='up' || a:dir=='down'
+            elseif a:dir=='up' || a:dir=='down'
             split
         end
 
@@ -268,7 +234,7 @@ if version >= 700
 
         if type=='buffer'
             exec 'buffer '.name
-        else
+            else
             exec 'edit '.name
         end
     endfunction
@@ -308,60 +274,9 @@ if version >= 700
 endif
 
 
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Editing Helpers
-" ------------------------------------------
-
-" folding (with shortcuts)
-augroup vimrc
-  au BufReadPre * setlocal foldmethod=indent
-  au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
-  au BufWinEnter * normal zR
-augroup END
-set foldlevelstart=100
-set foldlevel=100
-"set nofoldenable
-"autocmd Syntax c,cpp,vim,xml,html,xhtml,perl,python,ebuild normal zR
-
-nnoremap <space> za
-vnoremap <space> zf
-
-" save and restores folds when a file is closed and re-opened
-au BufWinLeave *.* mkview
-au BufWinEnter *.* silent loadview
-
-let g:skipview_files = [
-            \ '[EXAMPLE PLUGIN BUFFER]'
-            \ ]
-function! MakeViewCheck()
-    if has('quickfix') && &buftype =~ 'nofile'
-        " Buffer is marked as not a file
-        return 0
-    endif
-    if empty(glob(expand('%:p')))
-        " File does not exist on disk
-        return 0
-    endif
-    if len($TEMP) && expand('%:p:h') == $TEMP
-        " We're in a temp dir
-        return 0
-    endif
-    if len($TMP) && expand('%:p:h') == $TMP
-        " Also in temp dir
-        return 0
-    endif
-    if index(g:skipview_files, expand('%')) >= 0
-        " File is in skip list
-        return 0
-    endif
-    return 1
-endfunction
-augroup vimrcAutoView
-    autocmd!
-    " Autosave & Load Views.
-    autocmd BufWritePost,BufLeave,WinLeave ?* if MakeViewCheck() | mkview | endif
-    autocmd BufWinEnter ?* if MakeViewCheck() | silent loadview | endif
-augroup end
+" -------------------------------------------------------------------
 
 " paste mode
 nnoremap <F2> :set invpaste paste? ruler<CR>
@@ -441,7 +356,6 @@ command! -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
 "set nolist  " list disables linebreak
 "set wrapmargin=0
 
-
 " Put (vim) at the end of the window title
 set title titlestring=%t\ (vim)
 
@@ -452,9 +366,10 @@ nmap <leader>w :w!<CR>
 " from http://goo.gl/AVz1V
 cnoremap <expr> bd (getcmdtype() == ':' ? 'Bclose' : 'bd')
 
-" ------------------------------------------
+
+" -------------------------------------------------------------------
 " -- Search
-" ------------------------------------------
+" -------------------------------------------------------------------
 
 " ignore case when searching
 set ignorecase
@@ -465,18 +380,43 @@ set smartcase
 " incremental search (as you type)
 "set incsearch
 
-" ------------------------------------------
+" -------------------------------------------------------------------
+" -- Text Width and Highlight
+" -------------------------------------------------------------------
+
+" -- Text Width
+"
+" text width at 72 characters
+" (best to view 4 vertical windows on 30'' screen)
+"let g:textwidth = 72
+"set textwidth=g:textwidth
+set textwidth=72
+" set formatoptions to avoid breaking lines in insert mode
+set formatoptions=roqM1
+" disable textwidth entirely
+"set textwidth=0
+
+" -- OverLength Highlight
+"
+au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
+au FileType python highlight OverLength ctermbg=red ctermfg=white guibg=#592929
+" note the 72 here
+au FileType python match OverLength /\%72v.\+/
+
+
+" -------------------------------------------------------------------
 " -- Auto Completion
-" ------------------------------------------
+" -------------------------------------------------------------------
 " SuperTab Options
-"let g:SuperTabDefaultCompletionType = "context"
-"let g:SuperTabRetainCompletionDuration = "completion"
-"let g:SuperTabNoCompleteAfter = [',', '\s']
-"let g:SuperTabLongestEnhanced = 1
+let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabRetainCompletionDuration = "completion"
+let g:SuperTabNoCompleteAfter = [',', '\s']
+let g:SuperTabLongestEnhanced = 1
 "let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
-"filetype plugin on
-"autocmd FileType python set omnifunc=pythoncomplete#Complete
-"set ofu=syntaxcomplete#Complete
+"
+filetype plugin on
+autocmd FileType python set omnifunc=pythoncomplete#Complete
+set ofu=syntaxcomplete#Complete
 
 " Remap <C-x> <C-n> to <c-space>
 "inoremap <Nul> <C-x><C-n>
@@ -524,9 +464,9 @@ map <C-h> <C-W>h
 map <C-l> <C-W>l
 
 
-" ------------------------------------------
+" -------------------------------------------------------------------
 " -- Python related
-" ------------------------------------------
+" -------------------------------------------------------------------
 
 " application to exec on :make and take current filename -- for python, mine
 set makeprg=python\ %<.py
@@ -544,32 +484,120 @@ let g:pyflakes_use_quickfix = 0
   "let savemp = &makeprg
   "let qflist = []
   "for prg in a:000
-    "let &makeprg = prg . ' %'
-    "silent make!
-    "let qflist += getqflist()
+    """let &makeprg = prg . ' %'
+    """silent make!
+    """let qflist += getqflist()
   "endfor
   "if empty(qflist)
     "cclose
   "else
-    "call setqflist(qflist)
-    "copen
-    "cfirst
+    """call setqflist(qflist)
+    """copen
+    """cfirst
   "endif
   "let &makeprg = savemp
 "endfunction
 
-" ------------------------------------------
-" -- OverLength Highlight
-" ------------------------------------------
+" Python PEP8 text width (79 for code, 72 for comments)
+"function! GetPythonTextWidth()
+    "if !exists('g:python_normal_text_width')
+        "let normal_text_width = 79
+    "else
+        "let normal_text_width = g:python_normal_text_width
+    "endif
 
-"au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
-au FileType python highlight OverLength ctermbg=red ctermfg=white guibg=#592929
-au FileType python match OverLength /\%81v.\+/
+    "if !exists('g:python_comment_text_width')
+        "let comment_text_width = 72
+    "else
+        "let comment_text_width = g:python_comment_text_width
+    "endif
+
+    "let cur_syntax = synIDattr(synIDtrans(synID(line("."), col("."), 0)), "name")
+    "if cur_syntax == "Comment"
+        "return comment_text_width
+    "elseif cur_syntax == "String"
+        "" Check to see if we're in a docstring
+        "let lnum = line(".")
+        "while lnum >= 1 && (synIDattr(synIDtrans(synID(lnum, col([lnum, "$"]) - 1, 0)), "name") == "String" || match(getline(lnum), '\v^\s*$') > -1)
+            "if match(getline(lnum), "\\('''\\|\"\"\"\\)") > -1
+                """ Assume that any longstring is a docstring
+                ""return comment_text_width
+            "endif
+            "let lnum -= 1
+        "endwhile
+    "endif
+
+    "return normal_text_width
+"endfunction
+
+"augroup pep8
+    "au!
+    "autocmd CursorMoved,CursorMovedI * :if &ft == 'python' | :exe 'setlocal textwidth='.GetPythonTextWidth() | :endif
+"augroup END
 
 
-" ------------------------------------------
+" -------------------------------------------------------------------
+" -- Folding
+" -------------------------------------------------------------------
+
+" folding (with shortcuts)
+augroup vimrc
+  au BufReadPre * setlocal foldmethod=indent
+  au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
+  au BufWinEnter * normal zR
+augroup END
+set foldlevelstart=100
+set foldlevel=100
+"set nofoldenable
+"autocmd Syntax c,cpp,vim,xml,html,xhtml,perl,python,ebuild normal zR
+
+nnoremap <space> za
+vnoremap <space> zf
+
+""" save and restores folds when a file is closed and re-opened
+"" XXX: FIXME
+""au BufWinLeave *.* mkview
+""au BufWinEnter *.* silent loadview
+
+"let g:skipview_files = [
+            "\ '[EXAMPLE PLUGIN BUFFER]'
+            "\ ]
+
+"function! MakeViewCheck()
+    "if has('quickfix') && &buftype =~ 'nofile'
+        "" Buffer is marked as not a file
+        "return 0
+    "endif
+    "if empty(glob(expand('%:p')))
+        "" File does not exist on disk
+        "return 0
+    "endif
+    "if len($TEMP) && expand('%:p:h') == $TEMP
+        "" We're in a temp dir
+        "return 0
+    "endif
+    "if len($TMP) && expand('%:p:h') == $TMP
+        "" Also in temp dir
+        "return 0
+    "endif
+    "if index(g:skipview_files, expand('%')) >= 0
+        "" File is in skip list
+        "return 0
+    "endif
+    "return 1
+"endfunction
+
+"augroup vimrcAutoView
+    "autocmd!
+    "" Autosave & Load Views.
+    "autocmd BufWritePost,BufLeave,WinLeave ?* if MakeViewCheck() | mkview | endif
+    "autocmd BufWinEnter ?* if MakeViewCheck() | silent loadview | endif
+"augroup end
+
+
+" -------------------------------------------------------------------
 " -- MISC
-" ------------------------------------------
+" -------------------------------------------------------------------
 
 " Map a key to make the current window as large as possible
 " (without closing other windows)
