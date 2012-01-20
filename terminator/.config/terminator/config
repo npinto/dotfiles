@@ -18,8 +18,8 @@
     scrollback_lines = 1000000
     scrollbar_position = hidden
     scroll_on_output = False
+    font = Monospace 9
     allow_bold = False
-    font = Monospace 8
     scrollback_infinite = True
 [layouts]
   [[default]]
