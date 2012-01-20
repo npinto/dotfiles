@@ -392,7 +392,8 @@ set smartcase
 "set textwidth=g:textwidth
 set textwidth=72
 " set formatoptions to avoid breaking lines in insert mode
-set formatoptions=roqM1
+"set formatoptions=roqM1
+set formatoptions=rqM1
 " disable textwidth entirely
 "set textwidth=0
 
