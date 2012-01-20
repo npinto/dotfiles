@@ -400,8 +400,7 @@ set formatoptions=roqM1
 "
 au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
 au FileType python highlight OverLength ctermbg=red ctermfg=white guibg=#592929
-" note the 72 here
-au FileType python match OverLength /\%72v.\+/
+au FileType python match OverLength /\%81v.\+/
 
 
 " -------------------------------------------------------------------
