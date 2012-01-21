@@ -410,10 +410,12 @@ au FileType python match OverLength /\%81v.\+/
 
 " -- SuperTab
 let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabRetainCompletionDuration = "completion"
+let g:SuperTabNoCompleteAfter = [',', '\s']
+let g:SuperTabLongestEnhanced = 1
 " Default to Keyword Completion
 let g:SuperTabContextTextOmniPrecedence = ['&completefunc']
 let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-x><c-u>"]
-
 
 " -- Omnicomplete
 filetype plugin on
