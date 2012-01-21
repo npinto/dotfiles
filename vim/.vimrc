@@ -407,19 +407,40 @@ au FileType python match OverLength /\%81v.\+/
 " -------------------------------------------------------------------
 " -- Auto Completion
 " -------------------------------------------------------------------
-" SuperTab Options
+
+" -- Omnicomplete
+filetype plugin on
+set ofu=syntaxcomplete#Complete
+autocmd FileType python set omnifunc=pythoncomplete#Complete
+"autocmd FileType python set completefunc=pythoncomplete#Complete
+
+" If you prefer the Omni-Completion tip window to close when a selection
+" is made, these lines close it on movement in insert mode or when
+" leaving insert mode
+" from http://stackoverflow.com/questions/3105307/how-do-you-automatically-remove-the-preview-window-after-autocompletion-in-vim
+autocmd CursorMovedI * if pumvisible() == 0|pclose|endif
+autocmd InsertLeave * if pumvisible() == 0|pclose|endif
+
+" -- SuperTab
 let g:SuperTabDefaultCompletionType = "context"
-let g:SuperTabRetainCompletionDuration = "completion"
+"let g:SuperTabContextDefaultCompletionType = "<C-N>"
+"let g:SuperTabRetainCompletionDuration = "completion"
 let g:SuperTabNoCompleteAfter = [',', '\s']
 let g:SuperTabLongestEnhanced = 1
 "let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
+"let g:SuperTabDefaultCompletionType = "<C-N>"
+"let g:SuperTabDefaultCompletionType = "<c-x><c-u>"
+"let g:SuperTabCompletionContexts = ['s:ContextText', 's:ContextDiscover']
+"let g:SuperTabCompletionContexts = ['s:ContextDiscover', 's:ContextText']
+"let g:SuperTabContextTextOmniPrecedence = ['&omnifunc', '&completefunc']
+"let g:SuperTabContextTextOmniPrecedence = ['&completefunc', '&omnifunc']
+"let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-x><c-u>", "&omnifunc:<c-x><c-o>"]
+"let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-n>", "&omnifunc:<c-x><c-o>"]
 "
-filetype plugin on
-autocmd FileType python set omnifunc=pythoncomplete#Complete
-set ofu=syntaxcomplete#Complete
 
+" -- Keyword Completion
 " Remap <C-x> <C-n> to <c-space>
-"inoremap <Nul> <C-x><C-n>
+inoremap <Nul> <C-x><C-n>
 
 " From Paul Ivanov:
 ""
