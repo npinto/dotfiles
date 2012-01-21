@@ -408,6 +408,13 @@ au FileType python match OverLength /\%81v.\+/
 " -- Auto Completion
 " -------------------------------------------------------------------
 
+" -- SuperTab
+let g:SuperTabDefaultCompletionType = "context"
+" Default to Keyword Completion
+let g:SuperTabContextTextOmniPrecedence = ['&completefunc']
+let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-x><c-u>"]
+
+
 " -- Omnicomplete
 filetype plugin on
 set ofu=syntaxcomplete#Complete
@@ -421,26 +428,8 @@ autocmd FileType python set omnifunc=pythoncomplete#Complete
 autocmd CursorMovedI * if pumvisible() == 0|pclose|endif
 autocmd InsertLeave * if pumvisible() == 0|pclose|endif
 
-" -- SuperTab
-let g:SuperTabDefaultCompletionType = "context"
-"let g:SuperTabContextDefaultCompletionType = "<C-N>"
-"let g:SuperTabRetainCompletionDuration = "completion"
-let g:SuperTabNoCompleteAfter = [',', '\s']
-let g:SuperTabLongestEnhanced = 1
-"let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
-"let g:SuperTabDefaultCompletionType = "<C-N>"
-"let g:SuperTabDefaultCompletionType = "<c-x><c-u>"
-"let g:SuperTabCompletionContexts = ['s:ContextText', 's:ContextDiscover']
-"let g:SuperTabCompletionContexts = ['s:ContextDiscover', 's:ContextText']
-"let g:SuperTabContextTextOmniPrecedence = ['&omnifunc', '&completefunc']
-"let g:SuperTabContextTextOmniPrecedence = ['&completefunc', '&omnifunc']
-"let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-x><c-u>", "&omnifunc:<c-x><c-o>"]
-"let g:SuperTabContextDiscoverDiscovery = ["&completefunc:<c-n>", "&omnifunc:<c-x><c-o>"]
-"
-
-" -- Keyword Completion
-" Remap <C-x> <C-n> to <c-space>
-inoremap <Nul> <C-x><C-n>
+" remap omnicomplete's c-x c-o to c-space
+inoremap <Nul> <C-x><C-o>
 
 " From Paul Ivanov:
 ""
