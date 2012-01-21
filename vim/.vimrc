@@ -126,9 +126,9 @@ au BufRead,BufNewFile *.e{build,class} set ts=4 sw=4 noexpandtab
 set number
 
 " highlight search terms
-"set hlsearch
+set hlsearch
 " don't highlight search terms
-set nohlsearch
+"set nohlsearch
 
 " Show current mode at the bottom left corner
 set showmode

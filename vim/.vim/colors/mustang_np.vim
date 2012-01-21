@@ -2,6 +2,8 @@
 " Version:      1.0
 " Last Change:	September 25 2008
 
+" modified by N. Pinto
+
 set background=dark
 
 hi clear
@@ -36,6 +38,7 @@ hi Title		guifg=#f6f3e8 guibg=NONE	gui=bold ctermfg=254 cterm=bold
 hi Visual		guifg=#faf4c6 guibg=#3c414c gui=none ctermfg=254 ctermbg=4
 "hi SpecialKey	guifg=#808080 guibg=#343434 gui=none ctermfg=244 ctermbg=236
 hi SpecialKey	guifg=#808080 guibg=#343434 gui=none ctermfg=244
+hi Search ctermbg=220 ctermfg=black
 
 " Syntax highlighting
 hi Comment 		guifg=#808080 gui=italic ctermfg=244
@@ -55,4 +58,3 @@ hi Todo         guifg=#000000 guibg=#e6ea50 gui=italic
 
 " Code-specific colors
 hi pythonOperator guifg=#7e8aa2 gui=none ctermfg=103
-
