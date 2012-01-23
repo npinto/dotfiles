@@ -28,7 +28,10 @@ endif
 let mapleader=","
 
 " Press ,, to Escape
-"imap ,, <Esc>
+imap ,, <Esc>
+" Press ,. to Escape
+imap ,. <Esc>
+
 
 " make {C,S}-{left,right} work in screen or tmux
 map OC <Right>
