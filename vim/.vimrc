@@ -126,9 +126,9 @@ au BufRead,BufNewFile *.e{build,class} set ts=4 sw=4 noexpandtab
 set number
 
 " highlight search terms
-set hlsearch
+"set hlsearch
 " don't highlight search terms
-"set nohlsearch
+set nohlsearch
 
 " Show current mode at the bottom left corner
 set showmode
@@ -169,7 +169,7 @@ set visualbell
 " Tired of clearing highlighted searches
 " by searching for “ldsfhjkhgakjks”?
 " Use this:
-nmap <silent> <leader>/ :nohlsearch<CR>
+nmap <silent> <leader>/ :set hlsearch! hlsearch?<CR>
 "nnoremap <esc> :noh<return><esc>
 
 " Disable all blinking:
@@ -393,7 +393,7 @@ set smartcase
 set textwidth=72
 " set formatoptions to avoid breaking lines in insert mode
 "set formatoptions=roqM1
-set formatoptions=rqM1
+set formatoptions=qM1
 " disable textwidth entirely
 "set textwidth=0
 
