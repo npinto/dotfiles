@@ -16,8 +16,8 @@ if $TERM =~ '^linux'
     set t_Co=8
 else
     set t_Co=256
-    colorscheme  desert256
-    "colorscheme mustang_np
+    "colorscheme  desert256
+    colorscheme mustang_np
     "colorscheme ir_black
 endif
 
