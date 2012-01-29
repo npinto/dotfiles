@@ -25,6 +25,8 @@ test -d ~/goto && \
 alias gfv=get_flash_videos
 alias gfvd="cd ~/doc && get_flash_videos"
 
+command -v parallel &> /dev/null && alias gparallel=parallel
+
 # ----------------------------------------------------------------------------
 # -- cleaning
 # ----------------------------------------------------------------------------
