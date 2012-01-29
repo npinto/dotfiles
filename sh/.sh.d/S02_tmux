@@ -1,3 +1,5 @@
-# for tmux: export 256color
-test -n "$TMUX" && export TERM=screen-256color
+alias tmux='tmux -2'
+alias ta='tmux att -d -t'
 
+# export 256color
+test -n "$TMUX" && export TERM=screen-256color

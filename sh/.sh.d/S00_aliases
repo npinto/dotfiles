@@ -17,8 +17,6 @@ alias cb='cd && cd -'
 
 alias grep='grep --colour=auto'
 
-alias tmux='tmux -2'
-
 test -d ~/goto && \
          alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
          alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf \$(pwd) ~/goto/current"
