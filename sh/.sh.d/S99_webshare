@@ -1,0 +1,1 @@
+alias webshare='curl -F "sprunge=<-" http://sprunge.us | xclip'
