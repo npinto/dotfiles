@@ -17,8 +17,6 @@ alias cb='cd && cd -'
 
 alias grep='grep --colour=auto'
 
-alias tmux='tmux -2'
-
 test -d ~/goto && \
          alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
          alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf \$(pwd) ~/goto/current"
@@ -26,6 +24,8 @@ test -d ~/goto && \
 # get_flash_videos
 alias gfv=get_flash_videos
 alias gfvd="cd ~/doc && get_flash_videos"
+
+command -v parallel &> /dev/null && alias gparallel=parallel
 
 # ----------------------------------------------------------------------------
 # -- cleaning
