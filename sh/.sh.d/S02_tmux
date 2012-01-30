@@ -1,6 +1,7 @@
 alias tmux='tmux -2'
 alias ta='tmux att -d -t'
 alias tls='tmux ls'
+alias tn='tmux new -s'
 
 # export 256color
 test -n "$TMUX" && export TERM=screen-256color
