@@ -484,7 +484,7 @@ map <C-l> <C-W>l
 " -------------------------------------------------------------------
 
 " autopep8
-cmap apep8 !~/.local/bin/autopep8 -i %
+cmap apep8 !autopep8 -i %
 
 " application to exec on :make and take current filename -- for python, mine
 set makeprg=python\ %<.py
