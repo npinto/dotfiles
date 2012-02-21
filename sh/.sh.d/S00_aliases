@@ -7,6 +7,7 @@ alias la='ls -haFG'
 alias recent="ls -lAt | head"
 alias df='df -h'
 alias du='du -h -c'
+alias rmrf='rm -rf'
 
 function mkcd(){
     mkdir $1;
