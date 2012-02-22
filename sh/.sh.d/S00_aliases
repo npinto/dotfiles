@@ -43,6 +43,9 @@ alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
 alias py=python
 alias ipy=ipython
 
+alias mkv=mkvirtualenv
+alias wo=workon
+
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
@@ -100,3 +103,4 @@ alias ggpnp='git pull origin $(current_branch) && git push origin $(current_bran
 # -- Kernel
 # -----------------------------------------------------------------------------
 alias install_kernel_x86_64="export KERNEL_SUFFIX=\$(make modules_install | grep DEPMOD | awk '{print \$2}') && echo \$KERNEL_SUFFIX && cp -Lvf arch/x86_64/boot/bzImage /boot/kernel-\${KERNEL_SUFFIX} && cp -vf .config /boot/config-\${KERNEL_SUFFIX} && cp -vf System.map /boot/System.map-\${KERNEL_SUFFIX}"
+
