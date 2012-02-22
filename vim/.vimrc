@@ -32,6 +32,8 @@ imap ,, <Esc>
 " Press ,. to Escape
 imap ,. <Esc>
 
+" Press \\ to save and exit (ZZ)
+map \\ ZZ
 
 " make {C,S}-{left,right} work in screen or tmux
 map OC <Right>
@@ -482,6 +484,9 @@ map <C-l> <C-W>l
 " -------------------------------------------------------------------
 " -- Python related
 " -------------------------------------------------------------------
+
+" autopep8
+cmap apep8 !autopep8 -i %
 
 " application to exec on :make and take current filename -- for python, mine
 set makeprg=python\ %<.py

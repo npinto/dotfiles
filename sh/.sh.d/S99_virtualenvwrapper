@@ -1,0 +1,1 @@
+test -f /usr/bin/virtualenvwrapper.sh && source /usr/bin/virtualenvwrapper.sh && export WORKON_HOME=${HOME}/venv && mkdir -p ${WORKON_HOME}
