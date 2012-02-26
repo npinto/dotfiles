@@ -1,1 +1,8 @@
-test -f /usr/bin/virtualenvwrapper.sh && source /usr/bin/virtualenvwrapper.sh && export WORKON_HOME=${HOME}/venv && mkdir -p ${WORKON_HOME}
+# Hardcoded for Gentoo Linux
+test -f /usr/bin/virtualenvwrapper.sh && source /usr/bin/virtualenvwrapper.sh
+
+# Hardcoded for Mac OS X (py27)
+test -f /Users/nich2o/.pythonbrew/pythons/Python-2.7.1/bin/virtualenvwrapper.sh && source /Users/nich2o/.pythonbrew/pythons/Python-2.7.1/bin/virtualenvwrapper.sh
+
+export WORKON_HOME=${HOME}/venv
+mkdir -p ${WORKON_HOME}
