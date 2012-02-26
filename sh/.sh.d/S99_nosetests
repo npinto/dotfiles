@@ -1,0 +1,8 @@
+# fix nose/virtualenv bug, see:
+# http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
+alias nosetests-hack='python `which nosetests`'
+
+# nosetests helper
+alias nsvx='nosetests -s -v -x --with-doctest'
+
+
