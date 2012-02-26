@@ -4,5 +4,4 @@ alias nosetests-hack='python `which nosetests`'
 
 # nosetests helper
 alias nsvx='nosetests -s -v -x --with-doctest'
-
-
+alias nsvxd='nosetests -s -v -x --with-doctest'
