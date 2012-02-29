@@ -31,9 +31,6 @@
 	path = vim/.vim/bundle/conque
 	url = https://github.com/rson/vim-conque
 	ignore = untracked
-[submodule "vim/.vim/bundle/rst-tables"]
-	path = vim/.vim/bundle/rst-tables
-	url = https://github.com/nvie/vim-rst-tables
 [submodule "vim/.vim/bundle/rst-headings"]
 	path = vim/.vim/bundle/rst-headings
 	url = https://github.com/jtriley/vim-rst-headings
