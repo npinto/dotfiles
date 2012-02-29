@@ -46,3 +46,6 @@
 [submodule "vim/.vim/bundle/supertab"]
 	path = vim/.vim/bundle/supertab
     url = git@github.com:npinto/supertab.git
+[submodule "vim/.vim/bundle/ipython"]
+	path = vim/.vim/bundle/ipython
+	url = git@github.com:npinto/vim-ipython.git
