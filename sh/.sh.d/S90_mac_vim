@@ -1,5 +1,6 @@
 # MacVim
 #test -x "/Applications/MacVim.app/Contents/MacOS/Vim" && alias vim=/Applications/MacVim.app/Contents/MacOS/Vim && alias vi=vim
-VIM_EXE=/usr/local/Cellar/macvim/7.3-64/MacVim.app/Contents/MacOS/Vim
-test -x ${VIM_EXE} && alias vim=${VIM_EXE}
-alias vi=vim
+command -v brew &> /dev/null && alias vim=$(brew --prefix vim)/bin/vim
+#VIM_EXE=/usr/local/Cellar/macvim/7.3-64/MacVim.app/Contents/MacOS/Vim
+#test -x ${VIM_EXE} && alias vim=${VIM_EXE}
+#alias vi=vim
