@@ -31,6 +31,8 @@ let mapleader=","
 imap ,, <Esc>
 " Press ,. to Escape
 imap ,. <Esc>
+" Press <C-\> to Escape
+imap <C-\> <Esc>
 
 " Press \\ to save and exit (ZZ)
 map \\ ZZ
@@ -47,6 +49,10 @@ imap <C-e> <ESC>$i<RIGHT>
 " map c-a to start-of-line
 map <C-a> 0
 imap <C-a> <ESC>0i
+
+" map Enter to open line in command mode
+map <CR> o<Esc>
+"map <C-CR> O<Esc>
 
 " Make it easy to update/reload vimrc
 nmap <Leader>s :source $MYVIMRC
