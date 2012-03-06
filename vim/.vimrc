@@ -32,7 +32,7 @@ imap ,, <Esc>
 " Press ,. to Escape
 imap ,. <Esc>
 " Press <C-\> to Escape
-imap <C-\> <Esc>
+imap <C-\> <Esc>l
 
 " Press \\ to save and exit (ZZ)
 map \\ ZZ
