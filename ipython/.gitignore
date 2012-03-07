@@ -5,3 +5,4 @@
 .config/ipython/old/history
 .config/ipython/profile_default/db/*
 .config/ipython/Crash_report_ipython.txt
+.config/ipython/profile_default/security/*
