@@ -7,7 +7,7 @@ function verbose {
     $*
 }
 
-for f in .bashrc .bash_profile; do
+for f in .bashrc .bash_profile .inputrc; do
     echo $f;
     if [[ -e ~/$f ]]; then
         verbose mkdir -p $backup_dir;
