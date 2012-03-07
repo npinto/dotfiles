@@ -1,2 +1,7 @@
 set editing-mode vi
 set keymap vi-insert
+"\C-A":beginning-of-line
+"\C-B":backward-char
+"\C-F":forward-char
+"\C-E":end-of-line
+# for more options see http://www.mail-archive.com/bug-bash@gnu.org/msg01692.html
