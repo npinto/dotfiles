@@ -15,4 +15,4 @@ C-E: end-of-line
 C-r: reverse-search-history
 C-t: forward-search-history
 
-"\e[3~": vi-delete
+#"\e[3~": vi-delete
