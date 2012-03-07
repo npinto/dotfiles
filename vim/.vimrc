@@ -8,7 +8,6 @@ call pathogen#helptags()
 filetype plugin on
 filetype plugin indent on
 
-
 " -------------------------------------------------------------------
 " -- colorscheme
 " -------------------------------------------------------------------
@@ -33,6 +32,9 @@ imap ,, <Esc>
 imap ,. <Esc>
 " Press <C-\> to Escape
 imap <C-\> <Esc>l
+
+" Fix backspace
+set bs=2
 
 " Press \\ to save and exit (ZZ)
 map \\ ZZ

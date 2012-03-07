@@ -1,7 +1,18 @@
+# for more options see:
+# http://www.mail-archive.com/bug-bash@gnu.org/msg01692.html
+# http://denilsonsa.selfip.org/~denilson/inputrc
 set editing-mode vi
 set keymap vi-insert
-"\C-A":beginning-of-line
-"\C-B":backward-char
-"\C-F":forward-char
-"\C-E":end-of-line
-# for more options see http://www.mail-archive.com/bug-bash@gnu.org/msg01692.html
+
+C-A: beginning-of-line
+C-B: backward-char
+C-F: forward-char
+C-E: end-of-line
+
+# By default, ctrl+r and ctrl+s search history.
+# But ctrl+s also freezes the terminal.
+# So I'm mapping it to ctrl+t (which is transpose-chars by default)
+C-r: reverse-search-history
+C-t: forward-search-history
+
+"\e[3~": vi-delete
