@@ -1,0 +1,3 @@
+#!/bin/zsh
+# This hook is run before a project is deleted.
+
