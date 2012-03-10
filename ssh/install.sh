@@ -11,11 +11,13 @@ for srcfn in $srcdn/{config,.sh.d}; do
     echo $srcfn;
     srcbn=$(basename $srcfn);
     dstfn=$dstdn/$srcbn
-    if [[ -e $dstfn ]]; then
-        mkdir -p $backup_dir;
-        mv $dstfn $backup_dir;
+    if [[ -f $srcbn ]]; then
+        if [[ -e $dstfn ]]; then
+            mkdir -p $backup_dir;
+            mv $dstfn $backup_dir;
+        fi;
+        ln -sf $srcfn $dstfn;
     fi;
-    ln -sf $srcfn $dstfn;
 done;
 
 # vim: expandtab tabstop=4 shiftwidth=4 autoindent smartindent tw=80:
