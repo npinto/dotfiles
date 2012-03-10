@@ -49,12 +49,12 @@
 [submodule "vim/.vim/bundle/ipython"]
 	path = vim/.vim/bundle/ipython
 	url = git@github.com:npinto/vim-ipython.git
-[submodule "/home/npinto/dotfiles/virtualenv/.virtualenvs/external/nose"]
-	path = /home/npinto/dotfiles/virtualenv/.virtualenvs/external/nose
+[submodule "virtualenv/.virtualenvs/external/nose"]
+	path = virtualenv/.virtualenvs/external/nose
 	url = https://github.com/nose-devs/nose.git
-[submodule "/home/npinto/dotfiles/virtualenv/.virtualenvs/external/ipython"]
-	path = /home/npinto/dotfiles/virtualenv/.virtualenvs/external/ipython
+[submodule "virtualenv/.virtualenvs/external/ipython"]
+	path = virtualenv/.virtualenvs/external/ipython
 	url = https://github.com/ipython/ipython
-[submodule "/home/npinto/dotfiles/virtualenv/.virtualenvs/external/ipdb"]
-	path = /home/npinto/dotfiles/virtualenv/.virtualenvs/external/ipdb
+[submodule "virtualenv/.virtualenvs/external/ipdb"]
+	path = virtualenv/.virtualenvs/external/ipdb
 	url = https://github.com/gotcha/ipdb.git
