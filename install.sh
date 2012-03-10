@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 
 if [ $(command -v keychain) ]; then
     for f in ~/.ssh/id_?sa; do
