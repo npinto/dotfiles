@@ -13,5 +13,10 @@ fi
 ./git-pup
 
 for d in `ls -d */`; do
-    (cd $d; test -f ./install.sh && ./install.sh) ;
+    pushd $d
+    test -f ./install.sh && ./install.sh;
+    popd;
 done;
+
+set +e
+set +x
