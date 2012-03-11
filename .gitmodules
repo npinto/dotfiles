@@ -58,3 +58,6 @@
 [submodule "virtualenv/.virtualenvs/external/ipdb"]
 	path = virtualenv/.virtualenvs/external/ipdb
 	url = https://github.com/gotcha/ipdb.git
+[submodule "virtualenv/.virtualenvs/external/line_profiler"]
+	path = virtualenv/.virtualenvs/external/line_profiler
+	url = https://github.com/certik/line_profiler.git

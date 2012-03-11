@@ -3,5 +3,6 @@ set -x
 pip install -q -I ~/.virtualenvs/external/ipython
 pip install -q -I ~/.virtualenvs/external/nose
 pip install -q -I --no-deps ~/.virtualenvs/external/ipdb
+pip install -q -I ~/.virtualenvs/external/line_profiler
 hash -r
 set +x
