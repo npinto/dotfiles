@@ -60,4 +60,4 @@
 	url = https://github.com/gotcha/ipdb.git
 [submodule "virtualenv/.virtualenvs/external/line_profiler"]
 	path = virtualenv/.virtualenvs/external/line_profiler
-	url = https://github.com/certik/line_profiler.git
+	url = git@github.com:npinto/line_profiler.git
