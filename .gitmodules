@@ -61,3 +61,6 @@
 [submodule "virtualenv/.virtualenvs/external/line_profiler"]
 	path = virtualenv/.virtualenvs/external/line_profiler
 	url = git@github.com:npinto/line_profiler.git
+[submodule "vim/.vim/bundle/nerdtree"]
+	path = vim/.vim/bundle/nerdtree
+	url = https://github.com/scrooloose/nerdtree.git
