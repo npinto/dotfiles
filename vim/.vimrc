@@ -33,6 +33,13 @@ imap ,. <Esc>
 " Press <C-\> to Escape
 imap <C-\> <Esc>l
 
+" http://nvie.com/posts/how-i-boosted-my-vim/
+nnoremap ; :
+
+" Use Q for formatting the current paragraph (or selection)
+vmap Q gq
+nmap Q gqap
+
 " Fix backspace
 set bs=2
 
@@ -71,14 +78,21 @@ map <leader>[ :bp<CR>
 map <leader>k :bd<CR>
 
 " tabs
-map <C-t><up> :tabr<cr>
-map <C-t><down> :tabl<cr>
-map <C-t><left> :tabp<cr>
-map <C-t><right> :tabn<cr>
+"map <C-t><up> :tabr<cr>
+"map <C-t><down> :tabl<cr>
+"map <C-t><left> :tabp<cr>
+"map <C-t><right> :tabn<cr>
+map <C-p> :tabp<cr>
+map <C-n> :tabn<cr>
 
 " replace self.A = B by B = self.A
 command! -bar -range=% SwapEqual :<line1>,<line2>s/\(\s*\)\([^=]*\)\s\+=\s\+\([^;]*\)/\1\3 = \2/g | :nohl
 nohl
+
+" NERDTree
+nmap <silent> <Leader>nt :NERDTreeToggle<CR>
+nmap <silent> <Leader>nf :NERDTreeFind<CR>
+nmap <silent> <Leader>no :NERDTreeFocus<CR>
 
 
 " -------------------------------------------------------------------
@@ -205,11 +219,12 @@ let g:miniBufExplMapWindowNavVim = 1
 let g:miniBufExplMapWindowNavArrows = 1
 let g:miniBufExplModSelTarget = 1
 let g:miniBufExplUseSingleClick = 1
+let g:miniBufExplSplitBelow=1
 " Replace the following
 "let g:miniBufExplMapCTabSwitchBufs = 1
 " with tmux-like bindings to avoid conflicts with snipMate <C-TAB>
-noremap <C-n> :MBEbn<CR>
-noremap <C-p> :MBEbp<CR>
+"noremap <C-n> :MBEbn<CR>
+"noremap <C-p> :MBEbp<CR>
 " Fix bug described in
 " https://github.com/fholgado/minibufexpl.vim/issues/1
 au BufEnter * call MyLastWindow()
