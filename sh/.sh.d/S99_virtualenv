@@ -8,3 +8,5 @@ export WORKON_HOME=${HOME}/venv
 mkdir -p ${WORKON_HOME}
 
 alias cdv="cd ${VIRTUAL_ENV}"
+alias mkv="mkvirtualenv"
+alias mkvs="mkvirtualenv --system-site-packages"
