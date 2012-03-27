@@ -44,9 +44,6 @@ alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
 alias py=python
 alias ipy=ipython
 
-alias mkv=mkvirtualenv
-alias wo=workon
-
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
 alias nosetests-hack='python `which nosetests`'
