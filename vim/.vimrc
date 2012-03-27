@@ -82,8 +82,8 @@ map <leader>k :bd<CR>
 "map <C-t><down> :tabl<cr>
 "map <C-t><left> :tabp<cr>
 "map <C-t><right> :tabn<cr>
-map <C-p> :tabp<cr>
-map <C-n> :tabn<cr>
+"map <C-p> :tabp<cr>
+"map <C-n> :tabn<cr>
 
 " replace self.A = B by B = self.A
 command! -bar -range=% SwapEqual :<line1>,<line2>s/\(\s*\)\([^=]*\)\s\+=\s\+\([^;]*\)/\1\3 = \2/g | :nohl
@@ -223,8 +223,8 @@ let g:miniBufExplSplitBelow=1
 " Replace the following
 "let g:miniBufExplMapCTabSwitchBufs = 1
 " with tmux-like bindings to avoid conflicts with snipMate <C-TAB>
-"noremap <C-n> :MBEbn<CR>
-"noremap <C-p> :MBEbp<CR>
+noremap <C-n> :MBEbn<CR>
+noremap <C-p> :MBEbp<CR>
 " Fix bug described in
 " https://github.com/fholgado/minibufexpl.vim/issues/1
 au BufEnter * call MyLastWindow()
