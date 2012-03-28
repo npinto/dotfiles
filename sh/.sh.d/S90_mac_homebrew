@@ -1,2 +1,8 @@
-command -v brew &> /dev/null && export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+# -- sbin
 command -v brew &> /dev/null && export PATH=${PATH}:/usr/local/sbin
+
+# -- coreutils
+command -v brew &> /dev/null && export PATH="$(brew --prefix coreutils)/libexec/gnubin":${PATH}
+
+# -- ruby
+command -v brew &> /dev/null && export PATH="$(brew --prefix ruby)/bin":${PATH}
