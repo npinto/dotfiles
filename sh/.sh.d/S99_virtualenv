@@ -6,3 +6,10 @@ test -f /Users/nich2o/.pythonbrew/pythons/Python-2.7.1/bin/virtualenvwrapper.sh 
 
 export WORKON_HOME=${HOME}/venv
 mkdir -p ${WORKON_HOME}
+
+alias cdv="cd \${VIRTUAL_ENV}"
+
+alias mkv="mkvirtualenv"
+alias mkvs="mkvirtualenv --system-site-packages"
+
+alias wo=workon
