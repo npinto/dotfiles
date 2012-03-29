@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cp -vf "$1"{,.bak}
