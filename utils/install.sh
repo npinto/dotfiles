@@ -7,6 +7,8 @@ function verbose {
     $*
 }
 
+./make-keychain.sh
+
 for f in .utils; do
     echo $f;
     if [[ -e ~/$f ]]; then

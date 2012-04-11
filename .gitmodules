@@ -64,3 +64,6 @@
 [submodule "vim/.vim/bundle/nerdtree"]
 	path = vim/.vim/bundle/nerdtree
 	url = https://github.com/scrooloose/nerdtree.git
+[submodule "utils/external/keychain"]
+	path = utils/external/keychain
+	url = https://github.com/funtoo/keychain.git
