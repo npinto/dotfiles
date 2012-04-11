@@ -67,3 +67,4 @@
 [submodule "utils/external/keychain"]
 	path = utils/external/keychain
 	url = https://github.com/funtoo/keychain.git
+	ignore = untracked
