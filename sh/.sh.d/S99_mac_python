@@ -1,8 +1,7 @@
 # MacOSX's Python
 PYTHON_MACOSX=/Library/Frameworks/Python.framework/Versions/Current/bin
-test -d $PYTHON_MACOSX && export PATH=$PYTHON_MACOSX:$PATH
+test -d $PYTHON_MACOSX && export PATH=$PATH:$PYTHON_MACOSX
 
 # pythonbrew
 test -f ~/.pythonbrew/etc/bashrc && source ~/.pythonbrew/etc/bashrc
-command -v pythonbrew &> /dev/null && pythonbrew use 2.7.1 &> /dev/null
-
+command -v pythonbrew &> /dev/null && pythonbrew use 2.7.2 &> /dev/null

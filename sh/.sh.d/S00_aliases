@@ -58,7 +58,7 @@ alias pudb='python -m pudb.run'
 # (especially useful on BSD systems, like MacOS X)
 # ----------------------------------------------------------------------------
 # GNU sed
-command -v gsed &> /dev/null && alias sed='gsed'
+#command -v gsed &> /dev/null && alias sed='gsed'
 
 # ----------------------------------------------------------------------------
 # -- git aliases

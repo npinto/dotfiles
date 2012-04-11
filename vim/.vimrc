@@ -78,10 +78,10 @@ map <leader>[ :bp<CR>
 map <leader>k :bd<CR>
 
 " tabs
-"map <C-t><up> :tabr<cr>
-"map <C-t><down> :tabl<cr>
-"map <C-t><left> :tabp<cr>
-"map <C-t><right> :tabn<cr>
+map <C-t><up> :tabr<cr>
+map <C-t><down> :tabl<cr>
+map <C-t><left> :tabp<cr>
+map <C-t><right> :tabn<cr>
 "map <C-p> :tabp<cr>
 "map <C-n> :tabn<cr>
 
@@ -93,7 +93,7 @@ nohl
 nmap <silent> <Leader>nt :NERDTreeToggle<CR>
 nmap <silent> <Leader>nf :NERDTreeFind<CR>
 nmap <silent> <Leader>no :NERDTreeFocus<CR>
-
+let NERDTreeShowHidden=1
 
 " -------------------------------------------------------------------
 " -- Indentation

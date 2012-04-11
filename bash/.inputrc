@@ -1,3 +1,8 @@
+$include /etc/inputrc
+
+# use of $if, example at:
+# http://jasonwryan.com/blog/2011/12/01/readline/
+
 # for more options see:
 # http://www.mail-archive.com/bug-bash@gnu.org/msg01692.html
 # http://denilsonsa.selfip.org/~denilson/inputrc
@@ -16,3 +21,5 @@ C-r: reverse-search-history
 C-t: forward-search-history
 
 #"\e[3~": vi-delete
+
+C-l: clear-screen
