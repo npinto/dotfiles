@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dropbox start
+#dropbox start
 
 terminator &
 
