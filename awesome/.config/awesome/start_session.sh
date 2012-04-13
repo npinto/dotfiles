@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#dropbox start
-
 terminator &
+chromium &
 
 exec awesome
