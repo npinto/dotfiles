@@ -27,7 +27,7 @@ plugins=(vi-mode pip brew git-flow git-prompt)
 test -f /etc/profile && source /etc/profile
 
 # OMZ !
-source $ZSH/oh-my-zsh.sh
+test -f $ZSH/oh-my-zsh.sh && source $ZSH/oh-my-zsh.sh
 
 # -- Customize to your needs...
 
