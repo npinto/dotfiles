@@ -3,23 +3,22 @@
 	url = git@github.com:npinto/oh-my-zsh.git
 [submodule "external/jtriley"]
 	path = external/jtriley
-    url = git://github.com/jtriley/dotfiles.git
-    #url = https://github.com/jtriley/dotfiles
+	url = git://github.com/jtriley/dotfiles.git
 [submodule "vim/.vim/pathogen"]
 	path = vim/.vim/pathogen
-	url = https://github.com/tpope/vim-pathogen
+	url = git://github.com/tpope/vim-pathogen.git
 [submodule "vim/.vim/bundle/nerdcommenter"]
 	path = vim/.vim/bundle/nerdcommenter
-	url = https://github.com/scrooloose/nerdcommenter.git
+	url = git://github.com/scrooloose/nerdcommenter.git
 [submodule "vim/.vim/bundle/comments"]
 	path = vim/.vim/bundle/comments
-	url = https://github.com/h13ronim/vim-comments
+	url = git://github.com/h13ronim/vim-comments.git
 [submodule "vim/.vim/bundle/pep8"]
 	path = vim/.vim/bundle/pep8
-	url = https://github.com/nvie/vim-pep8.git
+	url = git://github.com/nvie/vim-pep8.git
 [submodule "vim/.vim/bundle/command-t"]
 	path = vim/.vim/bundle/command-t
-	url = https://github.com/vim-scripts/Command-T.git
+	url = git://github.com/vim-scripts/Command-T.git
 	ignore = untracked
 [submodule "vim/.vim/bundle/snipmate"]
 	path = vim/.vim/bundle/snipmate
@@ -27,23 +26,23 @@
 	ignore = untracked
 [submodule "vim/.vim/bundle/minibufexpl"]
 	path = vim/.vim/bundle/minibufexpl
-	url = https://github.com/fholgado/minibufexpl.vim
+	url = git://github.com/fholgado/minibufexpl.vim.git
 [submodule "vim/.vim/bundle/conque"]
 	path = vim/.vim/bundle/conque
-	url = https://github.com/rson/vim-conque
+	url = git://github.com/rson/vim-conque.git
 	ignore = untracked
 [submodule "vim/.vim/bundle/rst-headings"]
 	path = vim/.vim/bundle/rst-headings
-	url = https://github.com/jtriley/vim-rst-headings
+	url = git://github.com/jtriley/vim-rst-headings.git
 [submodule "vim/.vim/bundle/fugitive"]
 	path = vim/.vim/bundle/fugitive
-	url = https://github.com/tpope/vim-fugitive
+	url = git://github.com/tpope/vim-fugitive.git
 [submodule "vim/.vim/bundle/extradite"]
 	path = vim/.vim/bundle/extradite
-	url = https://github.com/int3/vim-extradite
+	url = git://github.com/int3/vim-extradite.git
 [submodule "iterm2/iTerm-2-Color-Themes"]
 	path = iterm2/iTerm-2-Color-Themes
-	url = https://github.com/baskerville/iTerm-2-Color-Themes.git
+	url = git://github.com/baskerville/iTerm-2-Color-Themes.git
 [submodule "vim/.vim/bundle/supertab"]
 	path = vim/.vim/bundle/supertab
     url = git@github.com:npinto/supertab.git
@@ -52,20 +51,20 @@
 	url = git@github.com:npinto/vim-ipython.git
 [submodule "virtualenv/.virtualenvs/external/nose"]
 	path = virtualenv/.virtualenvs/external/nose
-	url = https://github.com/nose-devs/nose.git
+	url = git://github.com/nose-devs/nose.git
 [submodule "virtualenv/.virtualenvs/external/ipython"]
 	path = virtualenv/.virtualenvs/external/ipython
-	url = https://github.com/ipython/ipython
+	url = git://github.com/ipython/ipython.git
 [submodule "virtualenv/.virtualenvs/external/ipdb"]
 	path = virtualenv/.virtualenvs/external/ipdb
-	url = https://github.com/gotcha/ipdb.git
+	url = git://github.com/gotcha/ipdb.git
 [submodule "virtualenv/.virtualenvs/external/line_profiler"]
 	path = virtualenv/.virtualenvs/external/line_profiler
 	url = git@github.com:npinto/line_profiler.git
 [submodule "vim/.vim/bundle/nerdtree"]
 	path = vim/.vim/bundle/nerdtree
-	url = https://github.com/scrooloose/nerdtree.git
+	url = git://github.com/scrooloose/nerdtree.git
 [submodule "utils/external/keychain"]
 	path = utils/external/keychain
-	url = https://github.com/funtoo/keychain.git
+	url = git://github.com/funtoo/keychain.git
 	ignore = untracked
