@@ -10,7 +10,7 @@ if [ $(command -v keychain) ]; then
     . ~/.keychain/$(hostname)-sh;
 fi
 
-./git-pup
+GIT_SSL_NO_VERIFY=true ./git-pup
 
 for d in `ls -d */`; do
     pushd $d
