@@ -3,7 +3,8 @@
 	url = git@github.com:npinto/oh-my-zsh.git
 [submodule "external/jtriley"]
 	path = external/jtriley
-	url = https://github.com/jtriley/dotfiles
+    url = git://github.com/jtriley/dotfiles.git
+    #url = https://github.com/jtriley/dotfiles
 [submodule "vim/.vim/pathogen"]
 	path = vim/.vim/pathogen
 	url = https://github.com/tpope/vim-pathogen
