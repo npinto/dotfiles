@@ -68,3 +68,6 @@
 	path = utils/external/keychain
 	url = git://github.com/funtoo/keychain.git
 	ignore = untracked
+[submodule "virtualenv/.virtualenvs/external/pytest"]
+	path = virtualenv/.virtualenvs/external/pytest
+	url = git@github.com:npinto/pytest.git

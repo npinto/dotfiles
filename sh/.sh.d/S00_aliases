@@ -42,7 +42,10 @@ alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
 # -- python-related
 # ----------------------------------------------------------------------------
 alias py=python
-alias ipy=ipython
+alias ipy="ipython"
+alias ipyc="ipython console"
+alias ipyqt="ipython qtconsole"
+alias ipyn="ipython notebook"
 
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
