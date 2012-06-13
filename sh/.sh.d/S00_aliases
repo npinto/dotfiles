@@ -20,7 +20,7 @@ alias grep='grep --colour=auto'
 
 test -d ~/goto && \
          alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
-         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf \$(pwd) ~/goto/current"
+         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf '$(pwd)' ~/goto/current"
 
 # get_flash_videos
 alias gfv=get_flash_videos
@@ -45,7 +45,7 @@ alias py=python
 alias ipy="ipython"
 alias ipyc="ipython console"
 alias ipyqt="ipython qtconsole"
-alias ipyn="ipython notebook"
+alias ipyn="ipython notebook --no-browser"
 
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
