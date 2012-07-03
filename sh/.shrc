@@ -8,4 +8,7 @@ if [[ -e ~/.ssh/.sh.d ]]; then
     done;
 fi;
 
+for sh_script in ~/.local/.sh.d/S[0-9][0-9]*[^~]; do
+    source $sh_script
+done
 
