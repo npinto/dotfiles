@@ -29,6 +29,8 @@ alias gfvd="cd ~/doc && get_flash_videos"
 
 command -v parallel &> /dev/null && alias gparallel=parallel
 
+alias gentoo="${HOME}/gentoo/startprefix"
+
 # ----------------------------------------------------------------------------
 # -- cleaning
 # ----------------------------------------------------------------------------
@@ -46,7 +48,7 @@ alias py=python
 alias ipy="ipython"
 alias ipyc="ipython console"
 alias ipyqt="ipython qtconsole"
-alias ipyn="ipython notebook --no-browser"
+alias ipyn="ipython notebook --no-browser --pylab=inline"
 
 # fix nose/virtualenv bug, see:
 # http://stackoverflow.com/questions/864956/problems-using-nose-in-a-virtualenv
