@@ -8,6 +8,7 @@ alias recent="ls -lAt | head"
 alias df='df -h'
 alias du='du -h -c'
 alias rmrf='rm -rf'
+alias gentoo='${HOME}/gentoo/startprefix'
 
 function mkcd(){
     mkdir $1;
