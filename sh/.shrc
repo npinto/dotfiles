@@ -13,4 +13,3 @@ if [[ -e ~/.local/.sh.d ]]; then
         source $sh_script
     done
 fi
-

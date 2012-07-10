@@ -24,7 +24,7 @@ export DISABLE_AUTO_UPDATE="true"
 plugins=(vi-mode pip brew git-flow git-prompt)
 
 # -- systemwide .profile
-test -f /etc/profile && source /etc/profile
+test -z ${EPREFIX} && test -f /etc/profile && source /etc/profile
 
 # OMZ !
 test -f $ZSH/oh-my-zsh.sh && source $ZSH/oh-my-zsh.sh
