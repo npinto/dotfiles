@@ -30,6 +30,9 @@ c.TerminalIPythonApp.exec_lines = [
     # -- standard packages
     'import numpy as np',
     'import scipy as sp',
+    'from scipy import misc',
+    'from scipy import ndimage',
+
 ]
 
 # Enable GUI event loop integration ('qt', 'wx', 'gtk').
