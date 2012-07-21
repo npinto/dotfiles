@@ -1,0 +1,1 @@
+alias oneliner_gnuplot_1="gnuplot -e \"set terminal png; set output 'plot.png'; plot '-' with lines\""
