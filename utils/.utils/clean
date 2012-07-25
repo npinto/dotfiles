@@ -10,4 +10,4 @@ find . -name ".coverage" -exec rm -vf {} \;
 find . -name "*~" -exec rm -vf {} \;
 
 # -- .egg-info
-find . -name "*-egg.info" -exec rm -rvf {} \;
+find . -name "*.egg-info" -exec rm -rvf {} \;
