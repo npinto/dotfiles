@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# -- pyc
+find . -name "*pyc" -exec rm -vf {} \;
+
+# -- coverage
+find . -name ".coverage" -exec rm -vf {} \;
+
+# -- ~
+find . -name "*~" -exec rm -vf {} \;
+
+# -- .egg-info
+find . -name "*-egg.info" -exec rm -rvf {} \;
