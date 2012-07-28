@@ -35,6 +35,13 @@ c.TerminalIPythonApp.exec_lines = [
 
 ]
 
+c.TerminalIPythonApp.extensions = [
+        'line_profiler_ext',
+]
+c.InteractiveShellApp.extensions = [
+        'line_profiler_ext',
+]
+
 # Enable GUI event loop integration ('qt', 'wx', 'gtk').
 # c.TerminalIPythonApp.gui = None
 
