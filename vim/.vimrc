@@ -188,7 +188,7 @@ if exists("+cursorcolumn")
     " horizontal line
     set cursorline
 endif
-:nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
+":nnoremap <Leader>c :set cursorline! cursorcolumn!<CR>
 
 " visual bell
 set visualbell
