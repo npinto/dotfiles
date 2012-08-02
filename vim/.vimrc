@@ -673,3 +673,8 @@ set wildmode=list:longest
 "set errorformat=%A%f\ IBM%nI\ %t\ %l.0\ %m,%Z%m
 map <leader>qn :cn<CR>
 map <leader>qp :cp<CR>
+
+" -- Comments
+" overrides 'comments.vim' with NERD Commetners
+map <C-c> <leader>c<space>
+map <C-x> <leader>c<space>
