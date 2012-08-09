@@ -31,15 +31,15 @@ command -v parallel &> /dev/null && alias gparallel=parallel
 
 alias gentoo="${HOME}/gentoo/startprefix"
 
-# ----------------------------------------------------------------------------
-# -- cleaning
-# ----------------------------------------------------------------------------
-alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
-alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
-alias clean-~='find . -name "*~" -exec rm -vf {} \;'
-alias clean='clean-pyc; clean-coverage; clean-~'
-alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
-#alias find-and-remove-trailing-whitespaces-here="for f in \$(find . -name '*.m'); do remove-trailing-whitespaces \$f; done;"
+## ----------------------------------------------------------------------------
+## -- cleaning
+## ----------------------------------------------------------------------------
+#alias clean-pyc='find . -name "*pyc" -exec rm -vf {} \;'
+#alias clean-coverage='find . -name ".coverage" -exec rm -vf {} \;'
+#alias clean-~='find . -name "*~" -exec rm -vf {} \;'
+#alias clean='clean-pyc; clean-coverage; clean-~'
+#alias remove-trailing-whitespaces="sed -i -e 's/[ \t]*$//'"
+##alias find-and-remove-trailing-whitespaces-here="for f in \$(find . -name '*.m'); do remove-trailing-whitespaces \$f; done;"
 
 # ----------------------------------------------------------------------------
 # -- python-related
