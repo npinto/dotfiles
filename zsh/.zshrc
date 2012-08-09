@@ -83,3 +83,26 @@ bindkey "^[[3~" delete-char
 bindkey -M vicmd "^[[3~" delete-char
 bindkey -M viins "^[[3~" delete-char
 
+# -- inserting the last word from the previous command.
+bindkey '\e.' insert-last-word
+
+# -- bind jj to Esc
+bindkey "jj" vi-cmd-mode
+
+# -- ESC-v to edit in an external editor
+bindkey -M vicmd v edit-command-line
+
+# -- history goodness
+bindkey ' ' magic-space
+bindkey -M vicmd "gg" beginning-of-history
+bindkey -M vicmd "G" end-of-history
+bindkey -M vicmd "k" history-search-backward
+bindkey -M vicmd "j" history-search-forward
+bindkey -M vicmd "?" history-incremental-search-backward
+bindkey -M vicmd "/" history-incremental-search-forward
+
+# -- (duplicate stuff)
+bindkey -M viins "^L" clear-screen
+bindkey -M viins "^W" backward-kill-word
+bindkey -M viins "^A" beginning-of-line
+bindkey -M viins "^E" end-of-line

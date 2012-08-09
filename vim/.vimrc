@@ -14,10 +14,10 @@ filetype plugin indent on
 if $TERM =~ '^linux'
     set t_Co=8
 else
-    set t_Co=256
     "colorscheme  desert256
     colorscheme mustang_np
     "colorscheme ir_black
+    set t_Co=256
 endif
 
 " -------------------------------------------------------------------
@@ -32,6 +32,8 @@ imap ,, <Esc>
 imap ,. <Esc>
 " Press <C-\> to Escape
 imap <C-\> <Esc>l
+" Press jj to Escape
+imap jj <Esc>
 
 " http://nvie.com/posts/how-i-boosted-my-vim/
 nnoremap ; :
@@ -64,8 +66,8 @@ map <CR> o<Esc>
 "map <C-CR> O<Esc>
 
 " Make it easy to update/reload vimrc
-nmap <Leader>s :source $MYVIMRC
-nmap <Leader>v :e $MYVIMRC
+nmap <leader>v :e $MYVIMRC<CR><C-W>_
+nmap <silent> <leader>V :source $MYVIMRC<CR>:filetype detect<CR>:exec ":echo '$MYVIMRC reloaded'"<CR>
 
 "list the buffers and await choice
 "(either numbers or some substring, enter keeps you in the same buffer)
@@ -672,4 +674,68 @@ set wildmode=list:longest
 " http://vim.1045645.n5.nabble.com/Quickfix-jumping-td1191243.html
 "set errorformat=%A%f\ IBM%nI\ %t\ %l.0\ %m,%Z%m
 map <leader>qn :cn<CR>
+
 map <leader>qp :cp<CR>
+
+function! ToggleMinimap()
+
+    if exists("s:isMini") && s:isMini == 0
+        let s:isMini = 1
+    else
+        let s:isMini = 0
+    end
+
+    if (s:isMini == 0)
+
+        " save current visible lines
+        let s:firstLine = line("w0")
+        let s:lastLine = line("w$")
+
+        " don't change window size
+        let c = &columns * 12
+        let l = &lines * 12
+        exe "set columns=" . c
+        exe "set lines=" . l
+
+        " make font small
+        set guifont=ProggyTinyTT:h2
+
+        exe 'normal zR'
+
+        " highlight lines which were visible
+        let s:lines = ""
+        for i in range(s:firstLine, s:lastLine)
+            let s:lines = s:lines . "\\%" . i . "l"
+            if i < s:lastLine
+                let s:lines = s:lines . "\\|"
+            endif
+        endfor
+
+        exe 'match Visible /' . s:lines . '/'
+        hi Visible guifg=#ffffff guibg=#2b3c43
+        set cursorline
+
+        no h 10j
+        no t 10k
+
+        nmap <space> :ToggleMinimap<CR>
+
+    else
+
+        set guifont=Anonymous\ Pro:h14
+        hi clear Visible
+        set nocursorline
+
+        no h j
+        no t k
+
+        nmap <space> a<space><ESC>
+
+    endif
+
+endfunction
+
+command! ToggleMinimap call ToggleMinimap()
+
+nmap <d-space> :ToggleMinimap<CR>
+
