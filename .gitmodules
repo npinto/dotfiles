@@ -71,3 +71,6 @@
 [submodule "virtualenv/.virtualenvs/external/pytest"]
 	path = virtualenv/.virtualenvs/external/pytest
 	url = git@github.com:npinto/pytest.git
+[submodule "vim/.vim/bundle/vim-flake8"]
+	path = vim/.vim/bundle/vim-flake8
+	url = git://github.com/nvie/vim-flake8.git
