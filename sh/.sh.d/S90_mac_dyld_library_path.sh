@@ -5,6 +5,3 @@ if [[ "`uname`" == "Darwin" ]]; then
     if [[ "`uname -r`" == "12.1.0" ]]; then
     fi;
 fi;
-
-
-
