@@ -45,7 +45,8 @@ alias gentoo="${HOME}/gentoo/startprefix"
 # -- python-related
 # ----------------------------------------------------------------------------
 alias py=python
-alias ipy="python -OO `which ipython`"
+alias ipy="ipython"
+alias ipyo="python -OO \$(which ipython)"
 alias ipyc="ipython console"
 alias ipyqt="ipython qtconsole"
 alias ipyn="ipython notebook --no-browser --pylab=inline"
