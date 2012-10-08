@@ -13,11 +13,19 @@ filetype plugin indent on
 " -------------------------------------------------------------------
 if $TERM =~ '^linux'
     set t_Co=8
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=16
 else
-    "colorscheme  desert256
-    colorscheme mustang_np
-    "colorscheme ir_black
     set t_Co=256
+    "colorscheme  desert256
+    "colorscheme mustang_np
+    "colorscheme ir_black
+    " -- solarized
+    " http://ethanschoonover.com/solarized
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=256
 endif
 
 " -------------------------------------------------------------------
