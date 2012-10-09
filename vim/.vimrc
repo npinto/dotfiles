@@ -148,7 +148,7 @@ match BadWhitespace /^\t\+/
 match BadWhitespace /\s\+$/
 
 " highlight error color for pyflakes (and any other SpellBad-dependent stuff)
-highlight SpellBad ctermbg=darkgray
+"highlight SpellBad ctermbg=darkgray
 
 " Gentoo's ebuild
 " from www.gentoo.org/proj/en/devrel/handbook/handbook.xml?part=2&chap=1
