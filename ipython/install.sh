@@ -7,7 +7,7 @@ function verbose {
     $*
 }
 
-for f in .config/ipython; do
+for f in .ipython .config/ipython; do
     echo $f;
     if [[ -e ~/$f ]]; then
         verbose mkdir -p $backup_dir;

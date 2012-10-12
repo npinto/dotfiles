@@ -1,7 +1,0 @@
-
-if [[ "`uname`" == "Darwin" ]]; then
-    export MACOSX_DEPLOYMENT_TARGET=10.6;
-    export ARCHFLAGS="-arch i386 -arch x86_64";
-fi;
-
-

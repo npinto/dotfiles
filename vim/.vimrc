@@ -13,11 +13,19 @@ filetype plugin indent on
 " -------------------------------------------------------------------
 if $TERM =~ '^linux'
     set t_Co=8
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=16
 else
-    "colorscheme  desert256
-    colorscheme mustang_np
-    "colorscheme ir_black
     set t_Co=256
+    "colorscheme  desert256
+    "colorscheme mustang_np
+    "colorscheme ir_black
+    " -- solarized
+    " http://ethanschoonover.com/solarized
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=256
 endif
 
 " -------------------------------------------------------------------
@@ -140,7 +148,7 @@ match BadWhitespace /^\t\+/
 match BadWhitespace /\s\+$/
 
 " highlight error color for pyflakes (and any other SpellBad-dependent stuff)
-highlight SpellBad ctermbg=darkgray
+"highlight SpellBad ctermbg=darkgray
 
 " Gentoo's ebuild
 " from www.gentoo.org/proj/en/devrel/handbook/handbook.xml?part=2&chap=1
@@ -432,6 +440,13 @@ set formatoptions=qM1
 au FileType python highlight OverLength ctermbg=darkred ctermfg=white guibg=#592929
 au FileType python highlight OverLength ctermbg=red ctermfg=white guibg=#592929
 au FileType python match OverLength /\%81v.\+/
+
+" -------------------------------------------------------------------
+" -- Whitespace preferences by filetype
+" -------------------------------------------------------------------
+autocmd Filetype html setlocal ts=2 sts=2 sw=2
+autocmd Filetype ruby setlocal ts=2 sts=2 sw=2
+autocmd Filetype javascript setlocal ts=4 sts=4 sw=4
 
 
 " -------------------------------------------------------------------

@@ -74,3 +74,6 @@
 [submodule "vim/.vim/bundle/vim-flake8"]
 	path = vim/.vim/bundle/vim-flake8
 	url = git://github.com/nvie/vim-flake8.git
+[submodule "vim/.vim/bundle/vim-colors-solarized"]
+	path = vim/.vim/bundle/vim-colors-solarized
+	url = git://github.com/altercation/vim-colors-solarized.git

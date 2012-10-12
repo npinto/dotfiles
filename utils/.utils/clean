@@ -11,3 +11,6 @@ find . -name "*~" -exec rm -vf {} \;
 
 # -- .egg-info
 find . -name "*.egg-info" -exec rm -rvf {} \;
+
+# -- __pycache__
+find . -name "__pycache__" -exec rm -rvf {} \;
