@@ -1,11 +1,10 @@
 #!/bin/bash
 
 set -e
-set -x
 
 if [ ! "$#" -eq 4 ]; then
     echo "Usage: $0 RSYNC_OPTIONS INCLUDE_ONLY SRC DST"
-    return 1
+    exit 1
 fi
 
 # -- parse args
