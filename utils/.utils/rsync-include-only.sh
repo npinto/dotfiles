@@ -3,7 +3,7 @@
 set -e
 
 if [ ! "$#" -eq 4 ]; then
-    echo "Usage: $0 RSYNC_OPTIONS INCLUDE_ONLY SRC DST"
+    echo "Usage: $(basename $0) RSYNC_OPTIONS INCLUDE_ONLY SRC DST"
     exit 1
 fi
 
