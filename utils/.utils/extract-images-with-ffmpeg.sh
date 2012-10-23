@@ -15,5 +15,5 @@ set -x
 test ! -d "${out_dir}"
 
 mkdir -p "${out_dir}"
-echo ffmpeg -i "${in_fn}" -an -f image2 -q:v 1 ${framerate} -vsync 0 "${out_dir}/%09d.${ext}"
+ffmpeg -i "${in_fn}" -an -f image2 -q:v 1 ${framerate} -vsync 0 "${out_dir}/%09d.${ext}"
 # -vsync 0 will not dump dupes
