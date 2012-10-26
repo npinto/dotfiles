@@ -3,4 +3,7 @@
 set -e
 set -x
 
-ffmpeg -i "$1" -vcodec copy -an "$2"
+ext="${1##*.}"
+outfn=${2-${1}.noaudio.${ext}}
+
+ffmpeg -i "$1" -vcodec copy -an "$outfn"
