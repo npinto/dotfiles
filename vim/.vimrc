@@ -478,6 +478,9 @@ autocmd InsertLeave * if pumvisible() == 0|pclose|endif
 " remap omnicomplete's c-x c-o to c-space
 inoremap <Nul> <C-x><C-o>
 
+" -- autocomplete on dashed-words, very useful for css
+set iskeyword+=-
+
 " From Paul Ivanov:
 ""
 "" XXX: i think this is slow in large projects!
@@ -701,3 +704,9 @@ map <leader>qp :cp<CR>
 " overrides 'comments.vim' with NERD Commetners
 map <C-c> <leader>c<space>
 map <C-x> <leader>c<space>
+
+" -- Don't flicker when executing macros/functions
+set lazyredraw
+
+" -- vim-powerline
+let g:Powerline_symbols = 'fancy'
