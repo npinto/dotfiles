@@ -15,11 +15,10 @@
 [profiles]
   [[default]]
     use_system_font = False
-    font = Monospace 8
     scrollback_lines = 1000000
     scrollbar_position = hidden
     scroll_on_output = False
-    copy_on_selection = True
+    font = Menlo for Powerline 8
     allow_bold = False
     scrollback_infinite = True
 [layouts]
