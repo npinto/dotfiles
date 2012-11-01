@@ -222,6 +222,19 @@ set mouse=a
 set ttymouse=xterm2
 
 " -------------------------------------------------------------------
+" -- Text Navigation
+" -------------------------------------------------------------------
+
+" Don't open folds when browsing with "(", "{", "[[", "[{", etc.
+set foldopen-=block
+
+" Don't open folds when searching
+set foldopen-=search
+
+" Don't open folds when in insert mode
+"set foldopen-=insert
+
+" -------------------------------------------------------------------
 " -- Buffer Navigation
 " -------------------------------------------------------------------
 " -- miniBufExpl plugin
