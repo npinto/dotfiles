@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+#set -x
+
+ARGC=("$#")
+[ $ARGC -eq 3 ]
+
+
+dir1=$1
+dir2=$2
+outdir=$3
+
+
+mkdir ${outdir}
+
+for fn1 in $(ls ${dir1}); do
+    if [ -f ${dir2}/${fn1} ]; then
+        echo "skip ${fn1}";
+    else
+        cp -v ${dir1}/${fn1} ${outdir}/ ;
+    fi;
+done
