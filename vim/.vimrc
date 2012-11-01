@@ -630,10 +630,10 @@ set foldlevel=100
 nnoremap <space> za
 vnoremap <space> zf
 
-""" save and restores folds when a file is closed and re-opened
-"" XXX: FIXME
-""au BufWinLeave *.* mkview
-""au BufWinEnter *.* silent loadview
+"" save and restores folds when a file is closed and re-opened
+" XXX: FIXME
+au BufWinLeave *.* mkview
+au BufWinEnter *.* silent loadview
 
 "let g:skipview_files = [
             "\ '[EXAMPLE PLUGIN BUFFER]'
