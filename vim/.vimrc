@@ -222,7 +222,7 @@ set mouse=a
 set ttymouse=xterm2
 
 " -------------------------------------------------------------------
-" -- Text Navigation
+" -- Folds
 " -------------------------------------------------------------------
 
 " Don't open folds when browsing with "(", "{", "[[", "[{", etc.
@@ -233,6 +233,11 @@ set foldopen-=search
 
 " Don't open folds when in insert mode
 "set foldopen-=insert
+
+" Don't underlines my folds
+hi Folded term=NONE cterm=NONE ctermfg=NONE ctermbg=NONE
+hi Folded gui=NONE guifg=NONE guibg=NONE
+set fillchars="fold: "
 
 " -------------------------------------------------------------------
 " -- Buffer Navigation
