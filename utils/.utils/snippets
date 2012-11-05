@@ -1,3 +1,0 @@
-#!/bin/bash
-
-vi ${HOME}/.vim/bundle/snipmate/snippets
