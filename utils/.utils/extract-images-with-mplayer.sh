@@ -18,4 +18,4 @@ test ! -d "${out_dir}"
 
 # the following doesn't work with png
 #mplayer "${in_fn}" -vo ${ext}:quality=100:outdir="${out_dir}"
-mplayer "${in_fn}" -vo ${ext}:outdir="${out_dir}"
+mplayer "${in_fn}" -nosound -benchmark -vo ${ext}:outdir="${out_dir}"
