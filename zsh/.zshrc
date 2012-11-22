@@ -87,7 +87,7 @@ bindkey -M viins "^[[3~" delete-char
 bindkey '\e.' insert-last-word
 
 # -- bind jj to Esc
-bindkey "jj" vi-cmd-mode
+#bindkey "jj" vi-cmd-mode
 
 # -- ESC-v to edit in an external editor
 bindkey -M vicmd v edit-command-line
