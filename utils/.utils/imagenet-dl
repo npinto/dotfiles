@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+set -x
+
+test ! -z ${IMAGENET_USERNAME}
+test ! -z ${IMAGENET_ACCESSKEY}
+
+wnid=$1
+release=${2:latest}
+
+wget -c -O ${wnid}.tar "http://www.image-net.org/download/synset?wnid=${wnid}&username=${IMAGENET_USERNAME}&accesskey=${IMAGENET_ACCESSKEY}&release=${release}"
+
+# vim: set ft=sh :
