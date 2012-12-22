@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+set -x
+
+key="$1"
+fin="$2"
+fout="$3"
+
+openssl smime -decrypt -binary -inkey "${key}" -inform DER -in "${fin}" -out "${fout}"
