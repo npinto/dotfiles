@@ -9,6 +9,7 @@ alias df='df -h'
 alias du='du -h -c'
 alias rmrf='rm -rf'
 alias gentoo='${HOME}/gentoo/startprefix'
+alias snippets='cd ${HOME}/.vim/bundle/snipmate/ && vi snippets'
 
 function mkcd(){
     mkdir $1;
@@ -19,9 +20,9 @@ alias cb='cd && cd -'
 
 alias grep='grep --colour=auto'
 
-test -d ~/goto && \
-         alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
-         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf '$(pwd)' ~/goto/current"
+#test -d ~/goto && \
+#         alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
+#         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf '$(pwd)' ~/goto/current"
 
 # get_flash_videos
 alias gfv=get_flash_videos
