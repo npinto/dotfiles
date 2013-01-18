@@ -3,8 +3,8 @@
 
 in_fn="$1"
 in_ext="${1##*.}"
-trans=${2:-0}
-out_fn=${4:-"${in_fn}.transpose=${trans}.${in_ext}"}
+trans=${3:-0}
+out_fn=${2:-"${in_fn}.transpose=${trans}.${in_ext}"}
 
 set -e
 set -x
