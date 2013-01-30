@@ -41,7 +41,7 @@ imap ,. <Esc>
 " Press <C-\> to Escape
 imap <C-\> <Esc>l
 " Press jj to Escape
-imap jj <Esc>
+"imap jj <Esc>
 
 " http://nvie.com/posts/how-i-boosted-my-vim/
 nnoremap ; :
@@ -631,6 +631,7 @@ set foldlevelstart=100
 set foldlevel=100
 "set nofoldenable
 "autocmd Syntax c,cpp,vim,xml,html,xhtml,perl,python,ebuild normal zR
+set foldmethod=manual
 
 nnoremap <space> za
 vnoremap <space> zf
