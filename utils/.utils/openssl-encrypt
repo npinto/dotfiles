@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+set -x
+
+pubkey="$1"
+fin="$2"
+fout="$3"
+
+openssl smime -encrypt -aes128 -binary -in "${fin}" -outform DER -out "${fout}" "${pubkey}"
