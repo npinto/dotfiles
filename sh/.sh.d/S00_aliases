@@ -23,6 +23,7 @@ alias grep='grep --colour=auto'
 #test -d ~/goto && \
 #         alias current="cd \$(ls -l ~/goto/current | awk '{print \$11}')" && \
 #         alias current-create-link-from-here="rm -vf ~/goto/current; ln -vsf '$(pwd)' ~/goto/current"
+alias current="cd $(readlink ~/goto/current)"
 
 # get_flash_videos
 alias gfv=get_flash_videos
