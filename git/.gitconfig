@@ -20,3 +20,5 @@
     user = npinto
 #[push]
     ##default = simple
+[push]
+	default = simple
