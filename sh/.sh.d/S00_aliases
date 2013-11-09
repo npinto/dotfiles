@@ -10,6 +10,7 @@ alias du='du -h -c'
 alias rmrf='rm -rf'
 alias gentoo='${HOME}/gentoo/startprefix'
 alias snippets='cd ${HOME}/.vim/bundle/snipmate/ && vi snippets'
+alias screenshot='import -window root screenshot.jpg'
 
 function mkcd(){
     mkdir $1;
