@@ -31,6 +31,7 @@ alias gfvd="cd ~/doc && get_flash_videos"
 
 # youtube-dl
 alias ytt="youtube-dl -t"
+alias ytta="ytt -x --audio-format best --audio-quality 0"
 
 command -v parallel &> /dev/null && alias gparallel=parallel
 
