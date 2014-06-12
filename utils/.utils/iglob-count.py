@@ -10,4 +10,4 @@ for fname in fnames:
     i += 1
     if i % 100 == 0:
         print '%e' % i
-
+print '%e' % i
