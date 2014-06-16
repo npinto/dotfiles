@@ -4,7 +4,7 @@ if command -v brew &> /dev/null; then
     # -- coreutils
     export PATH="$(brew --prefix coreutils)/libexec/gnubin":${PATH}
     # -- python
-    export PATH="$(brew --prefix python)/bin":/usr/local/share/python:${PATH}
+    #export PATH="$(brew --prefix python)/bin":/usr/local/share/python:${PATH}
     # -- ruby
     export PATH="$(brew --prefix ruby)/bin":${PATH}
 fi
