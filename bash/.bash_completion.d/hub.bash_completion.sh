@@ -1,0 +1,1 @@
+../../Cellar/hub/1.12.1/etc/bash_completion.d/hub.bash_completion.sh

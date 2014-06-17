@@ -11,5 +11,10 @@ function parse_git_branch {
     echo "("${ref#refs/heads/}")"
 }
 
+if [[ -f ${HOME}/.bash_completion && -d ${HOME}/.bash_completion.d ]]; then
+    . ${HOME}/.bash_completion
+fi
+
 export PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w $(parse_git_branch)\$\[\033[00m\] '
+
 
