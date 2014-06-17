@@ -92,6 +92,8 @@ bindkey '\e.' insert-last-word
 # -- ESC-v to edit in an external editor
 bindkey -M vicmd v edit-command-line
 
+fpath=(/usr/local/share/zsh-completions $fpath)
+
 # -- history goodness
 bindkey ' ' magic-space
 bindkey -M vicmd "gg" beginning-of-history
