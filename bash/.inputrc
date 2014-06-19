@@ -23,3 +23,5 @@ C-t: forward-search-history
 #"\e[3~": vi-delete
 
 C-l: clear-screen
+
+set echo-control-characters off
