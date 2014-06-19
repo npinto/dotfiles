@@ -9,6 +9,26 @@ filetype plugin on
 filetype plugin indent on
 
 " -------------------------------------------------------------------
+" -- colorscheme
+" -------------------------------------------------------------------
+if $TERM =~ '^linux'
+    set t_Co=8
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=16
+else
+    set t_Co=256
+    "colorscheme  desert256
+    "colorscheme mustang_np
+    "colorscheme ir_black
+    " -- solarized
+    " http://ethanschoonover.com/solarized
+    set background=dark
+    colorscheme solarized
+    let g:solarized_termcolors=256
+endif
+
+" -------------------------------------------------------------------
 " -- Keybindings
 " -------------------------------------------------------------------
 " set leader key
@@ -116,24 +136,6 @@ set smarttab
 
 " syntax
 syntax on
-
-" -- colorscheme
-if $TERM =~ '^linux'
-    set t_Co=8
-    set background=dark
-    colorscheme solarized
-    let g:solarized_termcolors=16
-else
-    set t_Co=256
-    "colorscheme  desert256
-    "colorscheme mustang_np
-    "colorscheme ir_black
-    " -- solarized
-    " http://ethanschoonover.com/solarized
-    set background=dark
-    colorscheme solarized
-    let g:solarized_termcolors=256
-endif
 
 " syntax for .cu files
 au BufNewFile,BufRead *.cu setf cuda
