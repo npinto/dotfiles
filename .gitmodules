@@ -27,10 +27,6 @@
 [submodule "vim/.vim/bundle/minibufexpl"]
 	path = vim/.vim/bundle/minibufexpl
 	url = git://github.com/fholgado/minibufexpl.vim.git
-[submodule "vim/.vim/bundle/conque"]
-	path = vim/.vim/bundle/conque
-	url = git://github.com/rson/vim-conque.git
-	ignore = untracked
 [submodule "vim/.vim/bundle/rst-headings"]
 	path = vim/.vim/bundle/rst-headings
 	url = git://github.com/jtriley/vim-rst-headings.git
