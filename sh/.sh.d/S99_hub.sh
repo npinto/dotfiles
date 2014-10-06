@@ -1,1 +1,1 @@
-which hub &> /dev/null && eval $(hub aslias -s)
+which hub &> /dev/null && eval $(hub alias -s)
