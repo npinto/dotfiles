@@ -7,7 +7,7 @@ function verbose {
     $*
 }
 
-for f in .tmux.conf; do
+for f in .tmux.conf*; do
     echo $f;
     if [[ -e ~/$f ]]; then
         verbose mkdir -p $backup_dir;
