@@ -1,7 +1,7 @@
 [user]
     npinto = Nicolas Pinto
     name = Nicolas Pinto
-    email = pinto@alum.mit.edu
+    #email = pinto@alum.mit.edu
 [alias]
     ci = commit
     cim = commit -m
