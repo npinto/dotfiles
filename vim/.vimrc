@@ -139,6 +139,8 @@ syntax on
 
 " syntax for .cu files
 au BufNewFile,BufRead *.cu setf cuda
+au BufRead,BufNewFile *.cu set filetype=c
+au BufRead,BufNewFile *.cl set filetype=c
 
 " Highlight color definition for bad whitespace
 highlight BadWhitespace ctermbg=red guibg=red
@@ -155,6 +157,9 @@ match BadWhitespace /\s\+$/
 au BufRead,BufNewFile *.e{build,class} let is_bash=1|setfiletype sh
 au BufRead,BufNewFile *.e{build,class} set ts=4 sw=4 noexpandtab
 
+" ipython
+au BufRead,BufNewFile *.cpy set filetype=python
+au BufRead,BufNewFile *.ipy set filetype=ipython
 
 " -------------------------------------------------------------------
 " -- Visuals
