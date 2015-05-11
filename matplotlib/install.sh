@@ -7,7 +7,7 @@ function verbose {
     $*
 }
 
-for f in .matplotlib; do
+for f in .config/matplotlib; do
     echo $f;
     if [[ -e ~/$f ]]; then
         verbose mkdir -p $backup_dir;
