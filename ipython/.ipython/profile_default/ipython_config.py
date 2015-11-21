@@ -32,7 +32,11 @@ c.TerminalIPythonApp.exec_lines = [
     'import scipy as sp',
     'from scipy import misc',
     'from scipy import ndimage',
-
+    """
+def fix_tab():
+    import IPython.core.interactiveshell
+    IPython.core.interactiveshell.InteractiveShell().instance().init_completer()
+""",
 ]
 
 try:
