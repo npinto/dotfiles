@@ -111,3 +111,5 @@ bindkey -M viins "^E" end-of-line
 
 # -- allow {a-z}
 setopt BRACE_CCL
+
+unset GREP_OPTIONS
