@@ -25,7 +25,7 @@ c.TerminalIPythonApp.exec_lines = [
     'import os',
     'import sys',
     'from os import path',
-    'import cPickle as pkl',
+    #'import cPickle as pkl',
 
     # -- standard packages
     'import numpy as np',
