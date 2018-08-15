@@ -1,1 +1,1 @@
-alias find-broken-symlinks="find . -type l -exec sh -c "file -b {} | grep -q ^broken" \; -print"
+alias find-broken-symlinks="find . -type l -exec sh -c 'file -b {} | grep -q ^broken' \; -print"
