@@ -11,6 +11,7 @@ alias rmrf='rm -rf'
 alias gentoo='${HOME}/gentoo/startprefix'
 alias snippets='cd ${HOME}/.vim/bundle/snipmate/ && vi snippets'
 alias screenshot='import -window root screenshot.jpg'
+alias tsms="ts '[%Y-%m-%d %H:%M:%.S]'"
 
 function mkcd(){
     mkdir $1;
@@ -116,4 +117,3 @@ alias ggpnp='git pull origin $(current_branch) && git push origin $(current_bran
 # -- Kernel
 # -----------------------------------------------------------------------------
 alias install_kernel_x86_64="export KERNEL_SUFFIX=\$(make modules_install | grep DEPMOD | awk '{print \$2}') && echo \$KERNEL_SUFFIX && cp -Lvf arch/x86_64/boot/bzImage /boot/kernel-\${KERNEL_SUFFIX} && cp -vf .config /boot/config-\${KERNEL_SUFFIX} && cp -vf System.map /boot/System.map-\${KERNEL_SUFFIX}"
-
