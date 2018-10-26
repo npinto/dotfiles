@@ -36,9 +36,6 @@
 [submodule "vim/.vim/bundle/extradite"]
 	path = vim/.vim/bundle/extradite
 	url = git://github.com/int3/vim-extradite.git
-[submodule "iterm2/iTerm-2-Color-Themes"]
-	path = iterm2/iTerm-2-Color-Themes
-	url = git://github.com/baskerville/iTerm-2-Color-Themes.git
 [submodule "vim/.vim/bundle/supertab"]
 	path = vim/.vim/bundle/supertab
     url = git@github.com:npinto/supertab.git
