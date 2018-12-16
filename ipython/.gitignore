@@ -6,3 +6,4 @@
 .config/ipython/profile_default/db/*
 .config/ipython/Crash_report_ipython.txt
 .config/ipython/profile_default/security/*
+.ipython/profile_default/db/dhist
