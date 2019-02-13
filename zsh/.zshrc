@@ -114,3 +114,6 @@ bindkey -M viins "^E" end-of-line
 setopt BRACE_CCL
 
 unset GREP_OPTIONS
+
+test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+
