@@ -11,5 +11,6 @@ eyeD3 --write-images=${TMPDIR} "$1"
 ffmpeg -i "$1" "${TMPWAV}"
 lame --preset insane "${TMPWAV}" "${OUTMP3}"
 FRONT_COVER=$(ls "${TMPDIR}"/FRONT_COVER*)
- eyeD3 --add-image "${FRONT_COVER}:FRONT_COVER" "${OUTMP3}"
+eyeD3 --add-image "${FRONT_COVER}:FRONT_COVER" "${OUTMP3}"
 
+rm -rvf ${TMPDIR}
