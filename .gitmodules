@@ -82,3 +82,6 @@
 [submodule "vim/.vim/bundle/vim-fugitive"]
 	path = vim/.vim/bundle/vim-fugitive
 	url = git://github.com/tpope/vim-fugitive.git
+[submodule "vim/.vim/bundle/dracula-theme"]
+	path = vim/.vim/bundle/dracula-theme
+	url = git@github.com:dracula/vim.git
