@@ -1,3 +1,6 @@
 #!/bin/bash
 
-eyeD3 --write-images=./ "$1"
+outdn="$1"
+infn="$2"
+
+eyeD3 --write-images="${outdn}" "${infn}"
