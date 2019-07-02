@@ -3,7 +3,8 @@
 set -e
 set -x
 
-outfn=$1
-infn=$2
+outfn="$1"
+infn="$2"
 
-metaflac --export-picture-to=${outfn} ${infn}
+metaflac --export-picture-to="${outfn}" "${infn}"
+ls -alFh "${outfn}"
