@@ -3,8 +3,8 @@
 set -e
 set -x
 
-outfn="$1"
-infn="$2"
+OUTDIR="$1"
+INFLAC="$2"
 
-metaflac --export-picture-to="${outfn}" "${infn}"
-ls -alFh "${outfn}"
+metaflac "${INFLAC}" --export-picture-to="${OUTDIR}/FRONT_COVER.jpg"
+ls "${OUTDIR}/FRONT_COVER.jpg"
