@@ -54,7 +54,7 @@ for line in data:
             raise IndexError
         out_lines.append(out_line + '\n')
         out_lines.append(accum[-1])
-        out_lines.append('URL ' + urllib.parse.quote(out_line))
+        out_lines.append('URL ' + urllib.parse.quote(out_line) + '\n')
         out_lines.append('\n')
         accum = []
 
