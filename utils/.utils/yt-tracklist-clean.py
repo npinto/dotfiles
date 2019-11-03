@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
+import urllib.parse
 
 infn = sys.argv[1]
 
@@ -52,7 +53,9 @@ for line in data:
         else:
             raise IndexError
         out_lines.append(out_line + '\n')
-        out_lines.append(accum[-1] + '\n')
+        out_lines.append(accum[-1])
+        out_lines.append('URL ' + urllib.parse.quote(out_line))
+        out_lines.append('\n')
         accum = []
 
 print(''.join(out_lines))
