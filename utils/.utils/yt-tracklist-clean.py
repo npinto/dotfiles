@@ -21,6 +21,8 @@ grep_v_in_l = [
     'Claim type',
     'Impact on the video',
     'Actions',
+    'Blocked in all',
+    'or monetized',
     '/',
 ]
 grep_v_eq_l = [
@@ -51,6 +53,7 @@ for line in data:
         elif len(accum) == 4:
             out_line = accum[2].strip() + ' - ' + accum[1].strip()
         else:
+            print(len(accum), accum)
             raise IndexError
         out_lines.append(out_line + '\n')
         out_lines.append(accum[-1])
