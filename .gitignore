@@ -5,3 +5,4 @@ ipython/.ipython/IPython_crash_report.txt
 *.bundle
 *.swp
 *.o
+ipython/.ipython/profile_default/db/dhist
