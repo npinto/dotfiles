@@ -133,3 +133,4 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
+source /usr/local/share/zsh/site-functions/_aws
