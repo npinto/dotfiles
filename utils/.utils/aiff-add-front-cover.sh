@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -x
+
 frontcover="$1"
 audiofile="$2"
 
