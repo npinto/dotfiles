@@ -12,10 +12,12 @@ outbn = sys.argv[2]
 
 mogg = pyogg.VorbisFile(infn)
 n_ch = mogg.channels
-print(infn, n_ch)
+freq = mogg.frequency
+print(infn, n_ch, freq)
 
 buff = mogg.buffer
 
+import IPython; ipshell = IPython.embed; ipshell(banner1='ipshell')
 for i in range(n_ch):
     outfn = outbn + '.%d.wav' % i
     print(outfn, i)
@@ -23,5 +25,5 @@ for i in range(n_ch):
     with wave.open(outfn, "wb") as outf:
         outf.setnchannels(1)
         outf.setsampwidth(2) # number of bytes
-        outf.setframerate(44100)
-        outf.writeframesraw(buff_arr[i::11].tobytes())
+        outf.setframerate(freq)
+        outf.writeframesraw(buff_arr[i::n_ch].tobytes())
