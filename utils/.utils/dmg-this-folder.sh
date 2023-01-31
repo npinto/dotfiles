@@ -1,7 +1,10 @@
 #!/bin/bash
 
-
 set -e
 set -x
 
-hdiutil create -volname "$1" -srcfolder "$2" -ov -format UDZO "$3"
+VOLUME_NAME=$1
+SRC_FOLDER=$2
+DMG_FILENAME=$3
+
+hdiutil create -volname "$VOLUME_NAME" -srcfolder "$SRC_FOLDER" -ov -format UDZO "$DMG_FILENAME"
