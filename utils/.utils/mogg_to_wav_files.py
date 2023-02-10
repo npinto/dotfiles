@@ -17,7 +17,6 @@ print(infn, n_ch, freq)
 
 buff = mogg.buffer
 
-import IPython; ipshell = IPython.embed; ipshell(banner1='ipshell')
 for i in range(n_ch):
     outfn = outbn + '.%d.wav' % i
     print(outfn, i)
