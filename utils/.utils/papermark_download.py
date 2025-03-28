@@ -179,6 +179,13 @@ def capture_all_slides(url, email=None, output_dir=None, max_failures=3):
         # Set up the driver
         driver = setup_driver()
         
+        # Check if URL has proper https:// prefix
+        if not url.startswith('http://') and not url.startswith('https://'):
+            logger.error("ERROR: URL must begin with 'http://' or 'https://'. Aborting.")
+            logger.error(f"Provided URL: {url}")
+            logger.error("Please provide a complete URL with http:// or https:// prefix")
+            raise ValueError("URL must begin with 'http://' or 'https://'")
+        
         # Navigate to the URL
         logger.info(f"Navigating to URL: {url}")
         driver.get(url)
