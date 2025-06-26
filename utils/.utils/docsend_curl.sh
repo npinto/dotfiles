@@ -47,3 +47,23 @@ for i in $(seq 1 $2); do
     curl $(jq -r .imageUrl ${jsondir}/page_data_${ii}.json) > ./${code}_image_files/slide_${ii}.png;
 done;
 
+# ------------------------------------------------------------------
+# Build PDFs *inside* the image directory
+# ------------------------------------------------------------------
+imgs_dir="./${code}_image_files"
+
+(
+  cd "${imgs_dir}" || exit 1          # work inside the folder
+
+  # 1 raw PDF (lossless)
+  img2pdf $(ls slide_*.png | sort -V) -o out.pdf
+
+  # 2 OCR-searchable PDF
+  ocrmypdf --rotate-pages --deskew --optimize 3 out.pdf out_ocr.pdf
+
+  # 3 compressed OCR PDF
+  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook \
+     -dNOPAUSE -dQUIET -dBATCH -sOutputFile=out_ocr_compressed.pdf \
+     out_ocr.pdf
+)
+
