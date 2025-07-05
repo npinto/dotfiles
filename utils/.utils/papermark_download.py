@@ -18,6 +18,23 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import logging
 
+
+# ---------------------------------------------------------------------------
+def requires_email(driver) -> bool:
+    """Return True if the current page is the Papermark email-gate screen."""
+    selectors = [
+        (By.ID, "email"),
+        (By.CSS_SELECTOR, "input[name='email']"),
+        (By.CSS_SELECTOR, "input[type='email']"),
+    ]
+    for by, sel in selectors:
+        try:
+            driver.find_element(by, sel)
+            return True
+        except NoSuchElementException:
+            continue
+    return False
+
 # Set up logging
 def setup_logging(output_dir=None):
     """Set up logging to both console and file"""
@@ -210,6 +227,12 @@ def capture_all_slides(url, email=None, output_dir=None, max_failures=3):
                 break
             time.sleep(0.1)
         
+
+        if requires_email(driver) and not email:
+            logger.error("Document requires an email; re-run with --email you@example.com")
+            driver.quit()
+            sys.exit(1)
+
         # Check if we need to bypass email protection
         if email:
             bypass_result = bypass_email_protection(driver, email)
