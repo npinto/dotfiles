@@ -2,6 +2,7 @@
 """
 ShootProof Robust Gallery Downloader - Production-Ready Version
 Enhanced with best practices for reliability, monitoring, and maintainability
+Supports both Selenium and Playwright engines
 
 Features:
 - Graceful shutdown handling
@@ -12,6 +13,7 @@ Features:
 - Resume capability
 - Better error handling
 - Performance monitoring
+- Choice of browser automation engine (Selenium or Playwright)
 """
 
 import argparse
@@ -30,24 +32,12 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-from selenium import webdriver
-from selenium.common.exceptions import (
-    TimeoutException,
-)
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from tqdm import tqdm
-from webdriver_manager.chrome import ChromeDriverManager
 
 # Constants for better maintainability
 DEFAULT_OUTPUT_DIR = "shootproof_photos"
@@ -59,6 +49,7 @@ MIN_FREE_SPACE_MB = 100
 VALID_IMAGE_SIZE_KB = 100
 CHUNK_SIZE = 8192
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+DEFAULT_ENGINE = "playwright"
 
 # HTTP Status codes
 HTTP_OK = 200
@@ -92,6 +83,7 @@ class DownloadConfig:
     user_agent: str = USER_AGENT
     rate_limit_delay: float = 0.1
     max_retries_per_photo: int = 3
+    engine: str = DEFAULT_ENGINE
 
 
 @dataclass
@@ -117,15 +109,449 @@ class DownloadStats:
         return (self.successful / total * 100) if total > 0 else 0
 
 
+@dataclass
+class PhaseTimings:
+    """Track timing for each phase of execution"""
+
+    browser_init: float = 0.0
+    authentication: float = 0.0
+    photo_loading: float = 0.0
+    url_transformation: float = 0.0
+    downloading: float = 0.0
+    report_generation: float = 0.0
+    cleanup: float = 0.0
+    total: float = 0.0
+
+
+class BrowserEngine:
+    """Abstract base class for browser engines"""
+
+    def __init__(self, config: DownloadConfig):
+        self.config = config
+        self.logger = logging.getLogger("ShootProof")
+
+    def navigate(self, url: str):
+        """Navigate to URL"""
+        raise NotImplementedError
+
+    def wait_for_page_load(self):
+        """Wait for page to load"""
+        raise NotImplementedError
+
+    def find_element(self, selector: str, by: str = "css") -> Optional[Any]:
+        """Find element by selector"""
+        raise NotImplementedError
+
+    def click(self, element_or_selector: Union[str, Any], force: bool = False):
+        """Click element"""
+        raise NotImplementedError
+
+    def fill(self, selector: str, value: str):
+        """Fill input field"""
+        raise NotImplementedError
+
+    def press_key(self, key: str):
+        """Press keyboard key"""
+        raise NotImplementedError
+
+    def execute_script(self, script: str) -> Any:
+        """Execute JavaScript"""
+        raise NotImplementedError
+
+    def screenshot(self, path: str):
+        """Take screenshot"""
+        raise NotImplementedError
+
+    def get_text(self) -> str:
+        """Get page text"""
+        raise NotImplementedError
+
+    def find_elements(self, selector: str, by: str = "css") -> list:
+        """Find multiple elements"""
+        raise NotImplementedError
+
+    def wait_for_selector(
+        self, selector: str, timeout: int = 10000, state: str = "visible"
+    ) -> bool:
+        """Wait for selector"""
+        raise NotImplementedError
+
+    def close(self):
+        """Close browser"""
+        raise NotImplementedError
+
+
+class SeleniumEngine(BrowserEngine):
+    """Selenium-based browser engine"""
+
+    def __init__(self, config: DownloadConfig):
+        super().__init__(config)
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.common.keys import Keys
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.common.exceptions import TimeoutException
+        from webdriver_manager.chrome import ChromeDriverManager
+
+        self.webdriver = webdriver
+        self.Options = Options
+        self.Service = Service
+        self.By = By
+        self.Keys = Keys
+        self.EC = EC
+        self.WebDriverWait = WebDriverWait
+        self.TimeoutException = TimeoutException
+        self.ChromeDriverManager = ChromeDriverManager
+
+        self.driver = None
+        self.wait = None
+        self._create_driver()
+
+    def _create_driver(self):
+        """Create Chrome driver with robust configuration"""
+        chrome_options = self.Options()
+
+        # Essential options
+        if self.config.headless:
+            chrome_options.add_argument("--headless=new")
+
+        # Performance and stability options
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument(f"--user-agent={self.config.user_agent}")
+
+        # Experimental options
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option("useAutomationExtension", False)
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "credentials_enable_service": False,
+                "profile.password_manager_enabled": False,
+                "profile.default_content_setting_values.notifications": 2,
+            },
+        )
+
+        # Performance logging
+        chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+        # Create driver with retry
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                self.logger.info(
+                    f"Creating Chrome driver (attempt {attempt + 1}/{max_attempts})..."
+                )
+                service = self.Service(self.ChromeDriverManager().install())
+                self.driver = self.webdriver.Chrome(
+                    service=service, options=chrome_options
+                )
+
+                # Remove webdriver detection
+                self.driver.execute_script(
+                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                )
+
+                self.wait = self.WebDriverWait(self.driver, self.config.timeout)
+                self.logger.info("✓ Chrome driver created successfully")
+                return
+
+            except Exception as e:
+                self.logger.error(f"Failed to create driver: {e}")
+                if attempt < max_attempts - 1:
+                    time.sleep(2**attempt)
+                else:
+                    raise
+
+    def navigate(self, url: str):
+        self.driver.get(url)
+
+    def wait_for_page_load(self):
+        self.WebDriverWait(self.driver, self.config.timeout).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
+
+    def find_element(self, selector: str, by: str = "css") -> Optional[Any]:
+        try:
+            if by == "css":
+                return self.wait.until(
+                    self.EC.presence_of_element_located(
+                        (self.By.CSS_SELECTOR, selector)
+                    )
+                )
+            elif by == "xpath":
+                return self.wait.until(
+                    self.EC.presence_of_element_located((self.By.XPATH, selector))
+                )
+        except self.TimeoutException:
+            return None
+
+    def click(self, element_or_selector: Union[str, Any], force: bool = False):
+        if isinstance(element_or_selector, str):
+            element = self.find_element(element_or_selector)
+            if not element:
+                return False
+        else:
+            element = element_or_selector
+
+        try:
+            if force:
+                self.driver.execute_script("arguments[0].click();", element)
+            else:
+                element.click()
+            return True
+        except Exception as e:
+            self.logger.debug(f"Click failed: {e}")
+            return False
+
+    def fill(self, selector: str, value: str):
+        element = self.find_element(selector)
+        if element:
+            self.driver.execute_script("arguments[0].value = '';", element)
+            element.send_keys(value)
+
+    def press_key(self, key: str):
+        from selenium.webdriver.common.action_chains import ActionChains
+
+        actions = ActionChains(self.driver)
+        if key.lower() == "enter":
+            actions.send_keys(self.Keys.RETURN)
+        actions.perform()
+
+    def execute_script(self, script: str) -> Any:
+        return self.driver.execute_script(script)
+
+    def screenshot(self, path: str):
+        self.driver.save_screenshot(path)
+
+    def get_text(self) -> str:
+        body = self.driver.find_element(self.By.TAG_NAME, "body")
+        return body.text if body else ""
+
+    def find_elements(self, selector: str, by: str = "css") -> list:
+        if by == "css":
+            return self.driver.find_elements(self.By.CSS_SELECTOR, selector)
+        elif by == "xpath":
+            return self.driver.find_elements(self.By.XPATH, selector)
+        return []
+
+    def wait_for_selector(
+        self, selector: str, timeout: int = 10000, state: str = "visible"
+    ) -> bool:
+        timeout_sec = timeout / 1000
+        try:
+            if state == "visible":
+                self.WebDriverWait(self.driver, timeout_sec).until(
+                    self.EC.visibility_of_element_located(
+                        (self.By.CSS_SELECTOR, selector)
+                    )
+                )
+            elif state == "hidden":
+                self.WebDriverWait(self.driver, timeout_sec).until_not(
+                    self.EC.presence_of_element_located(
+                        (self.By.CSS_SELECTOR, selector)
+                    )
+                )
+            return True
+        except self.TimeoutException:
+            return False
+
+    def close(self):
+        if self.driver:
+            try:
+                self.driver.quit()
+            except Exception as e:
+                self.logger.error(f"Error closing driver: {e}")
+
+
+class PlaywrightEngine(BrowserEngine):
+    """Playwright-based browser engine"""
+
+    def __init__(self, config: DownloadConfig):
+        super().__init__(config)
+        from playwright.sync_api import (
+            sync_playwright,
+            TimeoutError as PlaywrightTimeoutError,
+        )
+
+        self.TimeoutError = PlaywrightTimeoutError
+        self.playwright = sync_playwright().start()
+        self.browser = None
+        self.page = None
+        self._create_browser()
+
+    def _smart_wait_for_element(
+        self, selector: str, timeout_ms: int = 5000, state: str = "visible"
+    ) -> Optional[Any]:
+        """Smart polling mechanism that checks every 50ms instead of waiting full timeout"""
+        start_time = time.time()
+        poll_interval = 0.05  # 50ms for faster response
+
+        while (time.time() - start_time) * 1000 < timeout_ms:
+            try:
+                # For hidden state, we want to confirm element is NOT visible
+                if state == "hidden":
+                    # Check if element exists and is hidden
+                    elements = self.page.query_selector_all(selector)
+                    if not elements or not any(el.is_visible() for el in elements):
+                        return True  # Element is hidden/gone
+                    # Element still visible, keep waiting
+                else:
+                    # Try to find visible element with short timeout
+                    element = self.page.wait_for_selector(
+                        selector, timeout=100, state=state
+                    )
+                    return element
+            except self.TimeoutError:
+                if state == "hidden":
+                    # For hidden state, timeout means element is gone, which is what we want
+                    return True
+                # For visible state, element not found yet, wait and try again
+                time.sleep(poll_interval)
+
+        return None if state != "hidden" else False
+
+    def _create_browser(self):
+        """Create browser with robust configuration"""
+        # Browser launch options
+        launch_options = {
+            "headless": self.config.headless,
+            "args": [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
+                f"--user-agent={self.config.user_agent}",
+            ],
+        }
+
+        # Viewport and context options
+        viewport = {"width": 1920, "height": 1080}
+
+        # Create browser with retry
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                self.logger.info(
+                    f"Creating browser (attempt {attempt + 1}/{max_attempts})..."
+                )
+                browser = self.playwright.chromium.launch(**launch_options)
+
+                # Set viewport and user agent
+                context = browser.new_context(
+                    viewport=viewport,
+                    user_agent=self.config.user_agent,
+                    ignore_https_errors=not self.config.verify_ssl,
+                )
+
+                self.browser = context
+                self.page = context.new_page()
+                self.logger.info("✓ Browser created successfully")
+                return
+
+            except Exception as e:
+                self.logger.error(f"Failed to create browser: {e}")
+                if attempt < max_attempts - 1:
+                    time.sleep(2**attempt)
+                else:
+                    raise
+
+    def navigate(self, url: str):
+        self.page.goto(url, wait_until="domcontentloaded")
+        # Smart wait for page to be interactive
+        self.page.wait_for_function(
+            "() => document.readyState === 'complete'", timeout=5000
+        )
+
+    def wait_for_page_load(self):
+        # Playwright handles this automatically
+        pass
+
+    def find_element(self, selector: str, by: str = "css") -> Optional[Any]:
+        if by == "xpath":
+            return self._smart_wait_for_element(f"xpath={selector}", timeout_ms=5000)
+        else:
+            return self._smart_wait_for_element(selector, timeout_ms=5000)
+
+    def click(self, element_or_selector: Union[str, Any], force: bool = False):
+        try:
+            if isinstance(element_or_selector, str):
+                self.page.click(element_or_selector, force=force, timeout=5000)
+            else:
+                element_or_selector.click(force=force)
+            return True
+        except Exception as e:
+            self.logger.debug(f"Click failed: {e}")
+            return False
+
+    def fill(self, selector: str, value: str):
+        self.page.fill(selector, value)
+
+    def press_key(self, key: str):
+        if key.lower() == "enter":
+            self.page.keyboard.press("Enter")
+
+    def execute_script(self, script: str) -> Any:
+        # Playwright's evaluate expects expressions, not statements
+        # If script starts with "return", remove it for Playwright
+        if script.strip().startswith("return "):
+            script = script.strip()[7:]
+        return self.page.evaluate(script)
+
+    def screenshot(self, path: str):
+        self.page.screenshot(path=path)
+
+    def get_text(self) -> str:
+        return self.page.inner_text("body")
+
+    def find_elements(self, selector: str, by: str = "css") -> list:
+        if by == "xpath":
+            return self.page.query_selector_all(f"xpath={selector}")
+        else:
+            return self.page.query_selector_all(selector)
+
+    def wait_for_selector(
+        self, selector: str, timeout: int = 10000, state: str = "visible"
+    ) -> bool:
+        element = self._smart_wait_for_element(
+            selector, timeout_ms=timeout, state=state
+        )
+        return element is not None
+
+    def close(self):
+        if self.page:
+            try:
+                self.page.close()
+            except Exception as e:
+                self.logger.error(f"Error closing page: {e}")
+        if self.browser:
+            try:
+                self.browser.close()
+            except Exception as e:
+                self.logger.error(f"Error closing browser: {e}")
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception as e:
+                self.logger.error(f"Error stopping playwright: {e}")
+
+
 class RobustShootProofDownloader:
     """Production-ready ShootProof gallery downloader"""
 
     def __init__(self, config: DownloadConfig):
         self.config = config
-        self.driver = None
-        self.wait = None
+        self.engine = None
         self.session = None
         self._shutdown_requested = False
+        self._cleaned_up = False
         self._setup_signal_handlers()
 
         # Data storage
@@ -133,6 +559,7 @@ class RobustShootProofDownloader:
         self.photo_data: list[dict] = []
         self.download_results: dict[str, dict] = {}
         self.stats = DownloadStats()
+        self.timings = PhaseTimings()
 
         # Setup
         self._setup_logging()
@@ -157,7 +584,7 @@ class RobustShootProofDownloader:
 
         def signal_handler(signum, frame):
             self.logger.warning(
-                f"\nReceived signal {signum}. Initiating graceful shutdown..."
+                f"Received signal {signum}. Initiating graceful shutdown..."
             )
             self._shutdown_requested = True
 
@@ -171,7 +598,7 @@ class RobustShootProofDownloader:
         log_dir.mkdir(exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"shootproof_download_{timestamp}.log"
+        log_file = log_dir / f"shootproof_download_{self.config.engine}_{timestamp}.log"
 
         # Configure formatters
         file_formatter = logging.Formatter(
@@ -197,6 +624,7 @@ class RobustShootProofDownloader:
         self.logger.addHandler(console_handler)
 
         self.logger.info(f"Logging initialized. Log file: {log_file}")
+        self.logger.info(f"Using browser engine: {self.config.engine}")
 
     def _setup_requests_session(self):
         """Setup requests session with retry logic"""
@@ -242,111 +670,31 @@ class RobustShootProofDownloader:
         self.logger.info(f"Disk space available: {free_mb:.1f}MB")
 
     @contextmanager
-    def _webdriver_context(self):
-        """Context manager for WebDriver lifecycle"""
-        driver = None
+    def _browser_context(self):
+        """Context manager for browser lifecycle"""
+        engine = None
         try:
-            driver = self._create_driver()
-            self.driver = driver
-            self.wait = WebDriverWait(driver, self.config.timeout)
-            yield driver
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except Exception as e:
-                    self.logger.error(f"Error closing driver: {e}")
-                finally:
-                    self.driver = None
-                    self.wait = None
-
-    def _create_driver(self):
-        """Create Chrome driver with robust configuration"""
-        chrome_options = Options()
-
-        # Essential options
-        if self.config.headless:
-            chrome_options.add_argument("--headless=new")
-
-        # Performance and stability options
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--start-maximized")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_argument(f"--user-agent={self.config.user_agent}")
-
-        # Experimental options
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option("useAutomationExtension", False)
-        chrome_options.add_experimental_option(
-            "prefs",
-            {
-                "credentials_enable_service": False,
-                "profile.password_manager_enabled": False,
-                "profile.default_content_setting_values.notifications": 2,
-            },
-        )
-
-        # Performance logging
-        chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-
-        # Create driver with retry
-        max_attempts = 3
-        for attempt in range(max_attempts):
-            try:
-                self.logger.info(
-                    f"Creating Chrome driver (attempt {attempt + 1}/{max_attempts})..."
-                )
-                service = Service(ChromeDriverManager().install())
-                driver = webdriver.Chrome(service=service, options=chrome_options)
-
-                # Remove webdriver detection
-                driver.execute_script(
-                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-                )
-
-                self.logger.info("✓ Chrome driver created successfully")
-                return driver
-
-            except Exception as e:
-                self.logger.error(f"Failed to create driver: {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(2**attempt)
-                else:
-                    raise
-
-    def _safe_find_element(
-        self, by: By, value: str, timeout: int = 10
-    ) -> Optional[Any]:
-        """Safely find element with timeout"""
-        try:
-            element = WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((by, value))
-            )
-            return element
-        except TimeoutException:
-            return None
-
-    def _safe_click(self, element, use_js: bool = True) -> bool:
-        """Safely click element with fallback to JavaScript"""
-        try:
-            if use_js:
-                self.driver.execute_script("arguments[0].click();", element)
+            if self.config.engine == "selenium":
+                engine = SeleniumEngine(self.config)
             else:
-                element.click()
-            return True
-        except Exception as e:
-            self.logger.debug(f"Click failed: {e}")
-            return False
+                engine = PlaywrightEngine(self.config)
+            self.engine = engine
+            yield engine
+        finally:
+            if engine:
+                try:
+                    engine.close()
+                except Exception as e:
+                    self.logger.error(f"Error closing browser: {e}")
+                finally:
+                    self.engine = None
 
     def _take_screenshot(self, name: str, always: bool = False):
         """Take screenshot with better error handling"""
         if not always and self.config.log_level != "DEBUG":
             return
 
-        if not self.driver:
+        if not self.engine:
             return
 
         try:
@@ -354,7 +702,7 @@ class RobustShootProofDownloader:
             screenshots_dir.mkdir(parents=True, exist_ok=True)
 
             filepath = screenshots_dir / f"{name}_{datetime.now():%Y%m%d_%H%M%S}.png"
-            self.driver.save_screenshot(str(filepath))
+            self.engine.screenshot(str(filepath))
             self.logger.debug(f"Screenshot saved: {filepath}")
         except Exception as e:
             self.logger.debug(f"Screenshot failed: {e}")
@@ -376,7 +724,7 @@ class RobustShootProofDownloader:
 
     def authenticate(self):
         """Enhanced authentication with better error handling"""
-        self.logger.info("\n" + "-" * 60)
+        self.logger.info("-" * 60)
         self.logger.info("AUTHENTICATION PHASE")
         self.logger.info("-" * 60)
 
@@ -390,12 +738,8 @@ class RobustShootProofDownloader:
         try:
             # Navigate to gallery
             self.logger.info("Navigating to gallery...")
-            self.driver.get(self.config.gallery_url)
-
-            # Wait for page load
-            WebDriverWait(self.driver, self.config.timeout).until(
-                lambda d: d.execute_script("return document.readyState") == "complete"
-            )
+            self.engine.navigate(self.config.gallery_url)
+            self.engine.wait_for_page_load()
 
             self._take_screenshot("01_initial_page")
 
@@ -423,6 +767,42 @@ class RobustShootProofDownloader:
         pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return bool(re.match(pattern, email))
 
+    def _safe_find_element(self, by, value: str, timeout: int = 10) -> Optional[Any]:
+        """Safely find element with timeout (Selenium compatibility)"""
+        if self.config.engine == "selenium":
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+
+                element = WebDriverWait(self.engine.driver, timeout).until(
+                    EC.presence_of_element_located((by, value))
+                )
+                return element
+            except self.engine.TimeoutException:
+                return None
+        else:
+            # For Playwright, use the engine's find_element
+            if by == self.engine.By.XPATH if hasattr(self.engine, "By") else None:
+                return self.engine.find_element(value, by="xpath")
+            else:
+                return self.engine.find_element(value)
+
+    def _safe_click(self, element, use_js: bool = True) -> bool:
+        """Safely click element with fallback to JavaScript"""
+        if self.config.engine == "selenium":
+            try:
+                if use_js:
+                    self.engine.driver.execute_script("arguments[0].click();", element)
+                else:
+                    element.click()
+                return True
+            except Exception as e:
+                self.logger.debug(f"Click failed: {e}")
+                return False
+        else:
+            # For Playwright, use the engine's click method
+            return self.engine.click(element, force=use_js)
+
     def _try_authentication(self) -> bool:
         """Try authentication with multiple strategies"""
         strategies = [
@@ -442,38 +822,87 @@ class RobustShootProofDownloader:
 
     def _auth_strategy_standard(self) -> bool:
         """Standard authentication flow"""
-        # Click View Gallery button
-        view_button = self._safe_find_element(
-            By.XPATH, "//button[contains(text(), 'View Gallery')]"
-        )
+        if self.config.engine == "selenium":
+            # Use original Selenium logic
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.common.keys import Keys
+            from selenium.common.exceptions import TimeoutException
 
-        if view_button:
-            self._safe_click(view_button)
-            time.sleep(2)
-
-        # Find and fill email
-        email_input = self._safe_find_element(
-            By.CSS_SELECTOR, 'input[type="email"], input[name*="email"]'
-        )
-
-        if not email_input:
-            return False
-
-        # Clear and enter email
-        self.driver.execute_script("arguments[0].value = '';", email_input)
-        email_input.send_keys(self.config.email)
-        time.sleep(0.5)
-
-        # Submit
-        email_input.send_keys(Keys.RETURN)
-
-        # Wait for authentication
-        try:
-            WebDriverWait(self.driver, 10).until_not(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="email"]'))
+            # Click View Gallery button
+            view_button = self._safe_find_element(
+                By.XPATH, "//button[contains(text(), 'View Gallery')]"
             )
-            return True
-        except TimeoutException:
+
+            if view_button:
+                self._safe_click(view_button)
+                time.sleep(2)
+
+            # Find and fill email
+            email_input = self._safe_find_element(
+                By.CSS_SELECTOR, 'input[type="email"], input[name*="email"]'
+            )
+
+            if not email_input:
+                return False
+
+            # Clear and enter email
+            self.engine.driver.execute_script("arguments[0].value = '';", email_input)
+            email_input.send_keys(self.config.email)
+            time.sleep(0.5)
+
+            # Submit
+            email_input.send_keys(Keys.RETURN)
+
+            # Wait for authentication
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+
+                WebDriverWait(self.engine.driver, 10).until_not(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, 'input[type="email"]')
+                    )
+                )
+                return True
+            except TimeoutException:
+                return False
+        else:
+            # Use Playwright logic - with smart polling
+            # Try to click View Gallery button if present (fast check)
+            view_button = self.engine._smart_wait_for_element(
+                "button:has-text('View Gallery')", timeout_ms=1000
+            )
+            if view_button:
+                view_button.click()
+                time.sleep(0.5)
+
+            # Find and fill email - try common selectors with smart polling
+            email_selectors = [
+                'input[type="email"]',
+                'input[name*="email"]',
+                'input[placeholder*="email" i]',
+            ]
+
+            # Try each selector with quick timeout
+            for selector in email_selectors:
+                email_input = self.engine._smart_wait_for_element(
+                    selector, timeout_ms=500
+                )
+                if email_input:
+                    # Clear and fill
+                    email_input.fill("")
+                    email_input.fill(self.config.email)
+                    time.sleep(0.3)
+                    email_input.press("Enter")
+
+                    # Wait for email input to disappear (smart polling)
+                    disappeared = self.engine._smart_wait_for_element(
+                        selector, timeout_ms=10000, state="hidden"
+                    )
+                    if disappeared:  # True means element is hidden/gone
+                        return True
+                    break
+
             return False
 
     def _auth_strategy_modal(self) -> bool:
@@ -488,7 +917,7 @@ class RobustShootProofDownloader:
 
     def detect_gallery_info(self) -> Optional[int]:
         """Enhanced gallery detection with multiple strategies"""
-        self.logger.info("\n" + "-" * 60)
+        self.logger.info("-" * 60)
         self.logger.info("GALLERY DETECTION PHASE")
         self.logger.info("-" * 60)
 
@@ -516,20 +945,39 @@ class RobustShootProofDownloader:
     def _detect_from_text(self) -> Optional[int]:
         """Detect count from page text"""
         try:
-            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            page_text = self.engine.get_text()
+
+            # More comprehensive patterns
             patterns = [
-                r"(\d+)\s*photos?",
+                # Standard patterns
+                r"(\d+)\s*PHOTOS?",  # "38 PHOTOS" (uppercase)
+                r"(\d+)\s*photos?",  # "38 photos" (lowercase)
                 r"(\d+)\s*images?",
                 r"showing\s*(\d+)",
                 r"gallery.*?(\d+)",
+                r"(\d+)\s*items?",
+                # More specific patterns
+                r"total[:\s]*(\d+)",
+                r"count[:\s]*(\d+)",
+                r"(\d+)\s*(?:photos?|images?)\s*in\s*(?:this\s*)?gallery",
+                # Handle cases with formatting
+                r"<[^>]*>(\d+)<[^>]*>\s*PHOTOS?",  # HTML tags around number
+                r"(\d+)</?\w*>\s*PHOTOS?",  # Closing tags
             ]
 
             for pattern in patterns:
-                match = re.search(pattern, page_text, re.IGNORECASE)
-                if match:
-                    return int(match.group(1))
-        except Exception:
-            pass
+                matches = re.findall(pattern, page_text, re.IGNORECASE | re.MULTILINE)
+                if matches:
+                    # Take the first reasonable number (ignore very small or very large)
+                    for match in matches:
+                        count = int(match)
+                        if 1 <= count <= 10000:  # Reasonable photo count range
+                            self.logger.debug(
+                                f"Detected {count} photos from text pattern: {pattern}"
+                            )
+                            return count
+        except Exception as e:
+            self.logger.debug(f"Text detection failed: {e}")
         return None
 
     def _detect_from_meta(self) -> Optional[int]:
@@ -544,14 +992,22 @@ class RobustShootProofDownloader:
 
         for selector in selectors:
             try:
-                elem = self.driver.find_element(By.CSS_SELECTOR, selector)
-                count_text = (
-                    elem.text
-                    or elem.get_attribute("content")
-                    or elem.get_attribute("data-photo-count")
-                )
-                if count_text and count_text.isdigit():
-                    return int(count_text)
+                elem = self.engine.find_element(selector)
+                if elem:
+                    if self.config.engine == "selenium":
+                        count_text = (
+                            elem.text
+                            or elem.get_attribute("content")
+                            or elem.get_attribute("data-photo-count")
+                        )
+                    else:
+                        count_text = (
+                            elem.inner_text()
+                            or elem.get_attribute("content")
+                            or elem.get_attribute("data-photo-count")
+                        )
+                    if count_text and count_text.isdigit():
+                        return int(count_text)
             except Exception:
                 continue
         return None
@@ -559,7 +1015,7 @@ class RobustShootProofDownloader:
     def _detect_from_javascript(self) -> Optional[int]:
         """Detect using JavaScript execution"""
         try:
-            count = self.driver.execute_script("""
+            count = self.engine.execute_script("""
                 // Try various JavaScript methods
                 if (window.galleryData && window.galleryData.photoCount) {
                     return window.galleryData.photoCount;
@@ -591,7 +1047,7 @@ class RobustShootProofDownloader:
             self.logger.info("DRY RUN: Skipping photo loading")
             return
 
-        self.logger.info("\n" + "-" * 60)
+        self.logger.info("-" * 60)
         self.logger.info("PHOTO LOADING PHASE")
         self.logger.info("-" * 60)
 
@@ -601,28 +1057,20 @@ class RobustShootProofDownloader:
         initial_count = len(self.raw_photo_urls)
         self.logger.info(f"Initial load: {initial_count} photos")
 
-        # Setup progress tracking
+        # Progress tracking disabled to avoid non-logged output
         pbar = None
-        if expected_count:
-            pbar = tqdm(
-                total=expected_count,
-                desc="Loading photos",
-                unit="photos",
-                disable=self.config.log_level == "DEBUG",
-            )
-            pbar.update(initial_count)
 
         try:
             # Load with multiple strategies
             self._progressive_loading(pbar, expected_count)
 
         finally:
-            if pbar:
-                pbar.close()
+            # Progress tracking disabled
+            pass
 
         # Final verification
         final_count = len(self.raw_photo_urls)
-        self.logger.info(f"\n✓ Total photos loaded: {final_count}")
+        self.logger.info(f"✓ Total photos loaded: {final_count}")
 
         if expected_count and final_count < expected_count:
             self.logger.warning(
@@ -647,7 +1095,7 @@ class RobustShootProofDownloader:
                 self.logger.warning("Shutdown requested, stopping photo loading")
                 break
 
-            self.logger.info(f"\nTrying strategy: {strategy_name}")
+            self.logger.info(f"Trying strategy: {strategy_name}")
 
             try:
                 strategy_func()
@@ -667,8 +1115,8 @@ class RobustShootProofDownloader:
                     f"✓ Found {new_photos} new photos (total: {current_count})"
                 )
                 no_change_count = 0
-                if pbar:
-                    pbar.update(new_photos)
+                # Progress tracking disabled to avoid non-logged output
+                pass
             else:
                 no_change_count += 1
                 self.logger.info(
@@ -701,22 +1149,35 @@ class RobustShootProofDownloader:
 
         for selector in selectors:
             try:
-                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                elements = self.engine.find_elements(selector)
                 for elem in elements:
                     urls = []
 
                     # Check various attributes
-                    for attr in ["src", "ng-src", "data-src", "data-original"]:
-                        url = elem.get_attribute(attr)
-                        if url:
-                            urls.append(url)
+                    if self.config.engine == "selenium":
+                        for attr in ["src", "ng-src", "data-src", "data-original"]:
+                            url = elem.get_attribute(attr)
+                            if url:
+                                urls.append(url)
 
-                    # Check background-image
-                    style = elem.get_attribute("style")
-                    if style:
-                        match = re.search(r'url\(["\']?([^"\']+)["\']?\)', style)
-                        if match:
-                            urls.append(match.group(1))
+                        # Check background-image
+                        style = elem.get_attribute("style")
+                        if style:
+                            match = re.search(r'url\(["\'"]?([^"\']+)["\'"]?\)', style)
+                            if match:
+                                urls.append(match.group(1))
+                    else:
+                        for attr in ["src", "ng-src", "data-src", "data-original"]:
+                            url = elem.get_attribute(attr)
+                            if url:
+                                urls.append(url)
+
+                        # Check background-image
+                        style = elem.get_attribute("style")
+                        if style:
+                            match = re.search(r'url\(["\'"]?([^"\']+)["\'"]?\)', style)
+                            if match:
+                                urls.append(match.group(1))
 
                     # Process URLs
                     for url in urls:
@@ -739,7 +1200,7 @@ class RobustShootProofDownloader:
 
     def _extract_with_javascript(self) -> list[str]:
         """Extract URLs using JavaScript"""
-        return self.driver.execute_script(r"""
+        return self.engine.execute_script(r"""
             const urls = new Set();
             
             // Direct images
@@ -791,12 +1252,12 @@ class RobustShootProofDownloader:
 
     def _smooth_scroll_strategy(self):
         """Smooth scrolling with momentum"""
-        viewport_height = self.driver.execute_script("return window.innerHeight")
+        viewport_height = self.engine.execute_script("return window.innerHeight")
 
         for _ in range(15):
             if self._shutdown_requested:
                 break
-            self.driver.execute_script(f"""
+            self.engine.execute_script(f"""
                 window.scrollBy({{
                     top: {viewport_height * 0.7},
                     behavior: 'smooth'
@@ -806,7 +1267,7 @@ class RobustShootProofDownloader:
 
     def _viewport_chunk_strategy(self):
         """Load by viewport chunks"""
-        self.driver.execute_script("""
+        self.engine.execute_script("""
             const height = document.body.scrollHeight;
             const viewport = window.innerHeight;
             const chunks = Math.ceil(height / viewport);
@@ -819,19 +1280,14 @@ class RobustShootProofDownloader:
         """)
 
         # Wait for all scrolls
-        time.sleep(
-            (
-                self.driver.execute_script(
-                    "return Math.ceil(document.body.scrollHeight / window.innerHeight)"
-                )
-                + 1
-            )
-            * 0.2
+        chunks = self.engine.execute_script(
+            "return Math.ceil(document.body.scrollHeight / window.innerHeight)"
         )
+        time.sleep((chunks + 1) * 0.2)
 
     def _js_trigger_strategy(self):
         """Trigger lazy loading via JavaScript"""
-        self.driver.execute_script("""
+        self.engine.execute_script("""
             // Trigger all lazy load events
             const events = ['scroll', 'resize', 'orientationchange', 'load'];
             events.forEach(eventName => {
@@ -858,7 +1314,7 @@ class RobustShootProofDownloader:
 
     def _force_load_all_strategy(self):
         """Force load all images"""
-        self.driver.execute_script("""
+        self.engine.execute_script("""
             // Remove lazy loading
             document.querySelectorAll('img').forEach(img => {
                 img.loading = 'eager';
@@ -875,7 +1331,7 @@ class RobustShootProofDownloader:
 
     def transform_urls_to_high_res(self):
         """Transform URLs with better deduplication and validation"""
-        self.logger.info("\n" + "-" * 60)
+        self.logger.info("-" * 60)
         self.logger.info("URL TRANSFORMATION PHASE")
         self.logger.info("-" * 60)
 
@@ -890,8 +1346,18 @@ class RobustShootProofDownloader:
         }
 
         seen_photos = {}
+        cloudfront_domain = None
 
         for url in self.raw_photo_urls:
+            # Extract CloudFront domain from URL
+            if not cloudfront_domain and "cloudfront.net" in url:
+                domain_match = re.search(r"https?://([^/]+\.cloudfront\.net)", url)
+                if domain_match:
+                    cloudfront_domain = domain_match.group(1)
+                    self.logger.info(
+                        f"Discovered CloudFront domain: {cloudfront_domain}"
+                    )
+
             # Enhanced pattern - handle more URL formats
             patterns = [
                 r"/ph/([a-f0-9]+)/(l|t|1x|2x|3x)/(\d+)\.jpg",
@@ -921,7 +1387,20 @@ class RobustShootProofDownloader:
                         ):
                             seen_photos[photo_id]["original_resolution"] = resolution
                     else:
-                        high_res_url = f"https://d2rxqglyhdohqf.cloudfront.net/ph/{hash_id}/3x/{photo_id}.jpg"
+                        # Use discovered domain or extract from current URL
+                        if cloudfront_domain:
+                            high_res_url = f"https://{cloudfront_domain}/ph/{hash_id}/3x/{photo_id}.jpg"
+                        else:
+                            # Extract domain from current URL as fallback
+                            base_url_match = re.search(r"(https?://[^/]+)", url)
+                            if base_url_match:
+                                base_url = base_url_match.group(1)
+                                high_res_url = (
+                                    f"{base_url}/ph/{hash_id}/3x/{photo_id}.jpg"
+                                )
+                            else:
+                                # Last resort - use the original URL pattern
+                                high_res_url = url.replace(f"/{resolution}/", "/3x/")
 
                         seen_photos[photo_id] = {
                             "photo_id": photo_id,
@@ -971,6 +1450,7 @@ class RobustShootProofDownloader:
                     "total_photos": len(self.photo_data),
                     "statistics": stats,
                     "photos": self.photo_data,
+                    "engine": self.config.engine,
                 },
                 f,
                 indent=2,
@@ -985,7 +1465,7 @@ class RobustShootProofDownloader:
             self._simulate_downloads()
             return self.stats
 
-        self.logger.info("\n" + "-" * 60)
+        self.logger.info("-" * 60)
         self.logger.info("DOWNLOAD PHASE")
         self.logger.info("-" * 60)
 
@@ -1005,13 +1485,8 @@ class RobustShootProofDownloader:
             f"with {self.config.max_workers} workers"
         )
 
-        # Progress bar
-        pbar = tqdm(
-            total=len(photos_to_download),
-            desc="Downloading",
-            unit="photos",
-            disable=self.config.log_level == "DEBUG",
-        )
+        # Progress tracking via logging instead of progress bar
+        pbar = None
 
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             futures = {
@@ -1036,9 +1511,11 @@ class RobustShootProofDownloader:
                     self.logger.error(f"Download error for {photo['photo_id']}: {e}")
                     self.stats.failed += 1
 
-                pbar.update(1)
+                # Progress tracking disabled to avoid non-logged output
+                pass
 
-        pbar.close()
+        # Progress tracking disabled to avoid non-logged output
+        pass
 
         # Save results
         self._save_download_results()
@@ -1182,14 +1659,14 @@ class RobustShootProofDownloader:
             if result["resolution"]:
                 self.stats.resolutions[result["resolution"]] += 1
 
-            # Update progress bar
+            # Log download progress instead of progress bar
             size_mb = result["file_size"] / 1024 / 1024
-            pbar.set_postfix(
-                {
-                    "last": f"{result['filename']} ({size_mb:.1f}MB) [{result['resolution']}]",
-                    "success_rate": f"{self.stats.success_rate:.1f}%",
-                }
-            )
+            if self.stats.successful % 5 == 0:  # Log every 5th download to avoid spam
+                self.logger.info(
+                    f"Downloaded {result['filename']} ({size_mb:.1f}MB) [{result['resolution']}] - "
+                    f"Progress: {self.stats.successful}/{self.stats.successful + self.stats.failed} - "
+                    f"Success rate: {self.stats.success_rate:.1f}%"
+                )
         else:
             self.stats.failed += 1
             self.logger.error(
@@ -1205,6 +1682,7 @@ class RobustShootProofDownloader:
             json.dump(
                 {
                     "timestamp": datetime.now().isoformat(),
+                    "engine": self.config.engine,
                     "statistics": {
                         "successful": self.stats.successful,
                         "failed": self.stats.failed,
@@ -1233,7 +1711,7 @@ class RobustShootProofDownloader:
 
     def generate_report(self):
         """Generate comprehensive final report"""
-        self.logger.info("\n" + "=" * 80)
+        self.logger.info("=" * 80)
         self.logger.info("DOWNLOAD COMPLETE - FINAL REPORT")
         self.logger.info("=" * 80)
 
@@ -1244,9 +1722,10 @@ class RobustShootProofDownloader:
 
         # Build report
         report_lines = [
-            "\nGallery Information:",
+            "Gallery Information:",
             f"  URL: {self.config.gallery_url}",
             f"  Email: {self.config.email[:3]}...{self.config.email[-10:]}",
+            f"  Engine: {self.config.engine}",
             "",
             "Results:",
             f"  Photos found: {len(self.raw_photo_urls)}",
@@ -1262,32 +1741,52 @@ class RobustShootProofDownloader:
             "",
             "Performance:",
             f"  Time elapsed: {self.stats.elapsed_time:.1f} seconds",
-            f"  Average speed: {self.stats.successful / self.stats.elapsed_time:.1f} photos/second",
+            f"  Average speed: {self.stats.successful / self.stats.elapsed_time:.1f} photos/second"
+            if self.stats.elapsed_time > 0
+            else "  Average speed: N/A",
             f"  Resolution breakdown: {self.stats.resolutions}",
+            "",
+            f"Phase Timing Breakdown ({self.config.engine}):",
+            f"  Browser initialization: {self.timings.browser_init:.2f}s",
+            f"  Authentication: {self.timings.authentication:.2f}s",
+            f"  Photo loading: {self.timings.photo_loading:.2f}s",
+            f"  URL transformation: {self.timings.url_transformation:.2f}s",
+            f"  Downloading: {self.timings.downloading:.2f}s",
+            f"  Report generation: {self.timings.report_generation:.2f}s",
+            f"  Cleanup: {self.timings.cleanup:.2f}s",
+            f"  Total time: {self.timings.total:.2f}s",
             "",
             "Output Location:",
             f"  {Path(self.config.output_dir).resolve()}",
         ]
 
         if self.config.dry_run:
-            report_lines.insert(0, "\n*** DRY RUN - NO FILES WERE DOWNLOADED ***")
+            report_lines.insert(0, "*** DRY RUN - NO FILES WERE DOWNLOADED ***")
 
-        report = "\n".join(report_lines)
-        self.logger.info(report)
+        # Log each line separately to ensure proper timestamps
+        for line in report_lines:
+            self.logger.info(line)
 
         # Save report
-        report_file = Path(self.config.output_dir) / "download_report.txt"
+        report_file = (
+            Path(self.config.output_dir) / f"download_report_{self.config.engine}.txt"
+        )
         with open(report_file, "w") as f:
-            f.write(report)
+            f.write("\n".join(report_lines))
             f.write(f"\n\nGenerated at: {datetime.now()}\n")
 
     def cleanup(self):
         """Enhanced cleanup with error handling"""
-        self.logger.info("\nCleaning up resources...")
+        # Prevent double cleanup
+        if hasattr(self, "_cleaned_up") and self._cleaned_up:
+            return
+        self._cleaned_up = True
 
-        if self.driver:
+        self.logger.info("Cleaning up resources...")
+
+        if self.engine:
             try:
-                self.driver.quit()
+                self.engine.close()
                 self.logger.info("✓ Browser closed")
             except Exception as e:
                 self.logger.error(f"Error closing browser: {e}")
@@ -1301,6 +1800,7 @@ class RobustShootProofDownloader:
 
     def run(self):
         """Main execution with enhanced error handling"""
+        overall_start = time.time()
         try:
             # Validate environment
             self._validate_environment()
@@ -1309,48 +1809,109 @@ class RobustShootProofDownloader:
                 self.logger.info("*** DRY RUN MODE - No files will be downloaded ***")
 
             # Main workflow
-            with self._webdriver_context():
+            browser_start = time.time()
+            with self._browser_context():
+                self.timings.browser_init = time.time() - browser_start
+                elapsed = time.time() - overall_start
+                self.logger.info(
+                    f"⏱️  Browser initialization completed in {self.timings.browser_init:.2f}s (total elapsed: {elapsed:.2f}s)"
+                )
+
                 # Authenticate
+                auth_start = time.time()
                 self.authenticate()
+                self.timings.authentication = time.time() - auth_start
+                elapsed = time.time() - overall_start
+                self.logger.info(
+                    f"⏱️  Authentication completed in {self.timings.authentication:.2f}s (total elapsed: {elapsed:.2f}s)"
+                )
 
-                # Detect gallery info
-                expected_count = self.detect_gallery_info()
-
-                # Load all photos
-                self.load_all_photos(expected_count)
+                # Load all photos dynamically (skip detection)
+                load_start = time.time()
+                self.load_all_photos(None)
+                self.timings.photo_loading = time.time() - load_start
+                elapsed = time.time() - overall_start
+                self.logger.info(
+                    f"⏱️  Photo loading completed in {self.timings.photo_loading:.2f}s (total elapsed: {elapsed:.2f}s)"
+                )
 
                 # Transform URLs
+                transform_start = time.time()
                 self.transform_urls_to_high_res()
+                self.timings.url_transformation = time.time() - transform_start
+                elapsed = time.time() - overall_start
+                self.logger.info(
+                    f"⏱️  URL transformation completed in {self.timings.url_transformation:.2f}s (total elapsed: {elapsed:.2f}s)"
+                )
 
                 # Download photos
+                download_start = time.time()
                 self.download_all_photos()
+                self.timings.downloading = time.time() - download_start
+                elapsed = time.time() - overall_start
+                self.logger.info(
+                    f"⏱️  Downloading completed in {self.timings.downloading:.2f}s (total elapsed: {elapsed:.2f}s)"
+                )
 
             # Generate report
+            report_start = time.time()
             self.generate_report()
+            self.timings.report_generation = time.time() - report_start
+            elapsed = time.time() - overall_start
+            self.logger.info(
+                f"⏱️  Report generation completed in {self.timings.report_generation:.2f}s (total elapsed: {elapsed:.2f}s)"
+            )
 
-            self.logger.info("\n✅ Download completed successfully!")
+            self.timings.total = time.time() - overall_start
+            self.logger.info(f"⏱️  Total execution time: {self.timings.total:.2f}s")
+            self.logger.info("✅ Download completed successfully!")
 
         except KeyboardInterrupt:
-            self.logger.warning("\n⚠️ Interrupted by user")
+            self.logger.warning("⚠️ Interrupted by user")
             raise
         except Exception as e:
-            self.logger.error(f"\n❌ Fatal error: {e}")
+            self.logger.error(f"❌ Fatal error: {e}")
             self.logger.error(traceback.format_exc())
             self._take_screenshot("fatal_error", always=True)
             raise
         finally:
+            cleanup_start = time.time()
             self.cleanup()
+            self.timings.cleanup = time.time() - cleanup_start
+            if self.timings.cleanup > 0:
+                self.logger.info(f"⏱️  Cleanup completed in {self.timings.cleanup:.2f}s")
 
     def _validate_environment(self):
         """Validate environment before starting"""
-        # Check Chrome/Chromium is available
-        try:
-            import shutil
+        # Check engine-specific requirements
+        if self.config.engine == "selenium":
+            import importlib.util
 
-            if not shutil.which("google-chrome") and not shutil.which("chromium"):
-                self.logger.warning("Chrome/Chromium not found in PATH")
-        except Exception:
-            pass
+            if (
+                importlib.util.find_spec("selenium") is None
+                or importlib.util.find_spec("webdriver_manager") is None
+            ):
+                raise RuntimeError(
+                    "Selenium dependencies not installed. "
+                    "Run: pip install selenium webdriver-manager"
+                )
+
+            # Check Chrome/Chromium is available
+            try:
+                import shutil
+
+                if not shutil.which("google-chrome") and not shutil.which("chromium"):
+                    self.logger.warning("Chrome/Chromium not found in PATH")
+            except Exception:
+                pass
+        else:
+            import importlib.util
+
+            if importlib.util.find_spec("playwright") is None:
+                raise RuntimeError(
+                    "Playwright not installed. "
+                    "Run: pip install playwright && playwright install chromium"
+                )
 
         # Check output directory
         output_path = Path(self.config.output_dir)
@@ -1376,8 +1937,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic usage
+  # Basic usage (defaults to Playwright)
   %(prog)s "https://gallery.url/" "email@example.com"
+  
+  # Use Selenium engine
+  %(prog)s "https://gallery.url/" "email@example.com" --engine selenium
   
   # With custom output directory
   %(prog)s "https://gallery.url/" "email@example.com" -o my_photos
@@ -1406,6 +1970,12 @@ Examples:
         "--output",
         default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--engine",
+        choices=["selenium", "playwright"],
+        default=DEFAULT_ENGINE,
+        help=f"Browser automation engine (default: {DEFAULT_ENGINE})",
     )
     parser.add_argument(
         "--no-headless", action="store_true", help="Run browser in visible mode"
@@ -1469,6 +2039,9 @@ Examples:
     # Load configuration
     if args.config:
         config_data = load_config_file(args.config)
+        # Override engine from command line if provided
+        if args.engine:
+            config_data["engine"] = args.engine
         config = DownloadConfig(**config_data)
     else:
         if not args.gallery_url or not args.email:
@@ -1488,10 +2061,15 @@ Examples:
             retry_delay=args.retry_delay,
             rate_limit_delay=args.rate_limit,
             verify_ssl=args.verify_ssl,
+            engine=args.engine,
         )
 
     # Check dependencies
-    required_packages = ["selenium", "requests", "tqdm", "webdriver_manager"]
+    if config.engine == "selenium":
+        required_packages = ["selenium", "requests", "tqdm", "webdriver_manager"]
+    else:
+        required_packages = ["playwright", "requests", "tqdm"]
+
     missing_packages = []
 
     for package in required_packages:
@@ -1503,6 +2081,8 @@ Examples:
     if missing_packages:
         print(f"Missing required packages: {', '.join(missing_packages)}")
         print(f"Install with: pip install {' '.join(missing_packages)}")
+        if "playwright" in missing_packages:
+            print("Also run: playwright install chromium")
         sys.exit(1)
 
     # Run downloader
