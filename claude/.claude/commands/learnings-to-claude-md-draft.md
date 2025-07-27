@@ -80,3 +80,8 @@ When analyzing the conversation:
 - Note specific feedback on what worked/didn't work
 - Extract concrete examples over abstract principles
 - Identify tools and libraries the user prefers
+
+### CLAUDE.md Integration Guidelines
+- Check existing CLAUDE.md to ONLY ADD what's new, avoiding duplication
+- Determine the appropriate section for new content or create new sections as needed
+- Merge learnings into existing patterns rather than creating redundant entries
