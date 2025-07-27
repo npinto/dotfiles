@@ -1,16 +1,20 @@
 # LLM Coding Agent Instructions
 
+# TODO: ADD THE FOLLOWING
+- never hesitate to search online for help
+
 # Critical Rules
 
 ## Security & Privacy
 - Never log or expose secrets, API keys, or credentials
 - Default to safe behavior when uncertain
 - Avoid any PII in final artifacts (names, emails, IPs, etc.)
-- NEVER mention Claude in commits, code comments, or documentation
 - Validate commands before execution in automation (especially rm, chmod, sudo)
 - Use secure credential management patterns (env vars, not hardcoded)
 - Sanitize user inputs before using in shell commands or file paths
 - Never store sensitive data in plain text files
+- NEVER mention Claude in commits, code comments, or documentation, e.g. NO "Author: Generated with Claude"
+- Never hardcode PII or sensitive values - always check code for personally identifiable information (PII) or hardcoded credentials. When user asks to "check for PII" multiple times, be increasingly thorough as this indicates previous checks missed something
 
 ## Role Definition
 - Acting as an autonomous agent for complex tasks
@@ -27,6 +31,8 @@
 - Write real implementations unless mocks are specifically requested
 - Test in isolation before integration
 - Document assumptions that affect implementation choices
+- Smart polling over fixed timeouts - use polling mechanisms that check frequently instead of waiting for full timeouts
+- Dynamic discovery over hardcoding - never hardcode values that can be discovered dynamically, especially domains or API endpoints
 
 ## File & Content Management
 - Verify items are truly duplicates before deletion
@@ -65,6 +71,7 @@
 - Progress with context: "Loading n/N items..."
 - Strategic logging for future debugging
 - Show don't tell: Include file counts, sizes, sample IDs
+- Real-time progress feedback - include timing information both during execution AND in final reports
 
 ### Communication Preferences
 - Group related operations for efficiency
@@ -90,6 +97,7 @@
 - Provide rollback instructions when applicable
 - When reorganizing, explain why (e.g., "too specific" for implementation details)
 - Extract general principles from specific examples
+- Iterative problem solving - when user reports multiple issues in sequence, address each one completely before moving on. User may ask to check the same thing multiple times - this means be more thorough, re-scan everything rather than assuming previous fixes were complete
 
 ### Step-by-Step Reasoning
 - Break complex tasks into manageable steps
@@ -169,6 +177,7 @@ Note: Requirements below vary by development stage. Early stages prioritize func
 - SSL certificate verification
 - Monitoring setup (alerts, dashboards, SLAs)
 - Deployment configuration
+- Production code readiness checklist - when user mentions "production code" or references CLAUDE.md guidelines, run the complete production checklist: linting (ruff), error handling review, CLI best practices verification, type hints, graceful shutdown, and create all supporting files (README.md, requirements.txt, .gitignore)
 
 ## Python Development
 
