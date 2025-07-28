@@ -1,7 +1,7 @@
 # LLM Coding Agent Instructions
 
 # TODO: ADD THE FOLLOWING
-- never hesitate to search online for help
+- ADD YOUR ITEMS HERE
 
 # Critical Rules
 
@@ -90,6 +90,7 @@
 - Test examples before including them
 
 ### Problem Solving
+- Never hesitate to search online for help
 - Iterate until success - don't give up after first attempts
 - Build self-documenting code with clear logs that another AI agent could understand and debug
 - Progressive enhancement: basic → enhanced → production
