@@ -16,6 +16,7 @@ Key Features:
 - 🔄 Exponential backoff retry logic with circuit breakers
 - 🍪 Cookie support (Netscape format and browser extraction)
 - ⚡ Smart fallback strategies for complex websites
+- 🕰️ Automatic archive.org fallback for paywalled content
 
 Production Standards:
 - Custom exception classes for better error handling
@@ -52,9 +53,17 @@ Usage Examples:
     # Slow mode for very complex sites
     ./website_to_pdf.py https://heavy-js-site.com --slow
 
-Author: Generated with Claude Code
+Author: Nicolas Pinto
 License: MIT
-Version: 2.0.0 (Production)
+
+Version History:
+- 3.2.0: Added fast mode and optimized wait times for quicker conversions (current)
+- 3.1.0: Added image loading wait for better archive.org rendering
+- 3.0.0: Optimized archive.org with CDX length-based selection
+- 2.3.0: Smart archive.org with content analysis and UI removal
+- 2.2.0: Enhanced archive.org with multi-snapshot support
+- 2.1.0: Added archive.org fallback for paywalled content  
+- 2.0.0: Production ready with smart rendering fixes
 """
 
 import argparse
@@ -70,9 +79,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple, Union, List, Dict
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 import tempfile
 import uuid
+import aiohttp
 
 try:
     from playwright.async_api import async_playwright, Page, Browser, Error as PlaywrightError
@@ -119,6 +129,184 @@ class ConfigurationError(PDFConverterError):
     pass
 
 
+class PaywallError(PDFConverterError):
+    """Raised when a paywall is detected"""
+    pass
+
+
+class WaybackMachineHelper:
+    """Helper class for Archive.org Wayback Machine integration"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        self.cdx_api_url = "https://web.archive.org/cdx/search/cdx"
+        self.wayback_url_template = "https://web.archive.org/web/{timestamp}/{url}"
+    
+    async def find_archived_url(self, original_url: str, max_snapshots: int = 5) -> Optional[List[Tuple[str, int]]]:
+        """Find archived versions of a URL, returning snapshots sorted by content length"""
+        try:
+            self.logger.info(f"🔍 Searching for archived versions on archive.org...")
+            
+            # Query the CDX API with length field
+            params = {
+                'url': original_url,
+                'output': 'json',
+                'fl': 'timestamp,statuscode,original,mimetype,length,digest',
+                'filter': ['statuscode:200', 'mimetype:text/html'],
+                'collapse': 'digest',  # Get unique content only
+                'limit': '100'  # Get more snapshots to analyze
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.cdx_api_url, params=params) as response:
+                    if response.status != 200:
+                        self.logger.warning(f"CDX API returned status {response.status}")
+                        return None
+                    
+                    data = await response.json()
+                    
+                    # First row is headers
+                    if len(data) <= 1:
+                        self.logger.warning("No archived versions found")
+                        return None
+                    
+                    headers = data[0]
+                    # Create a list of snapshots with their content lengths
+                    snapshot_data = []
+                    
+                    for row in data[1:]:  # Skip header row
+                        snapshot_dict = dict(zip(headers, row))
+                        
+                        # Parse content length
+                        try:
+                            content_length = int(snapshot_dict.get('length', 0))
+                        except (ValueError, TypeError):
+                            content_length = 0
+                        
+                        # Skip if no meaningful content
+                        if content_length < 1000:  # Less than 1KB is probably an error page
+                            continue
+                        
+                        timestamp = snapshot_dict['timestamp']
+                        original = snapshot_dict['original']
+                        
+                        # Use id_ prefix for cleaner view (no archive.org toolbar)
+                        archive_url = f"https://web.archive.org/web/{timestamp}id_/{original}"
+                        
+                        snapshot_data.append((archive_url, content_length, timestamp[:8]))
+                    
+                    if not snapshot_data:
+                        self.logger.warning("No valid snapshots found")
+                        return None
+                    
+                    # Sort by content length (largest first)
+                    snapshot_data.sort(key=lambda x: x[1], reverse=True)
+                    
+                    # Log the snapshots we found
+                    self.logger.info(f"✅ Found {len(snapshot_data)} unique snapshots")
+                    
+                    # Take the top snapshots
+                    result_snapshots = []
+                    seen_dates = set()
+                    
+                    for url, length, date in snapshot_data[:max_snapshots * 2]:
+                        # Prefer diverse dates
+                        if date not in seen_dates or len(result_snapshots) < max_snapshots:
+                            result_snapshots.append((url, length))
+                            if date not in seen_dates:
+                                seen_dates.add(date)
+                                self.logger.info(f"📊 Snapshot from {date}: {length:,} bytes")
+                        
+                        if len(result_snapshots) >= max_snapshots:
+                            break
+                    
+                    return result_snapshots
+                    
+        except Exception as e:
+            self.logger.error(f"Error searching Wayback Machine: {e}")
+            return None
+    
+    async def get_latest_snapshot_url(self, url: str) -> Optional[str]:
+        """Get the latest snapshot URL using the availability API"""
+        try:
+            availability_url = f"https://archive.org/wayback/available?url={quote(url)}"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(availability_url) as response:
+                    if response.status != 200:
+                        return None
+                    
+                    data = await response.json()
+                    
+                    if 'archived_snapshots' in data and 'closest' in data['archived_snapshots']:
+                        snapshot = data['archived_snapshots']['closest']
+                        if snapshot.get('available', False):
+                            return snapshot['url']
+            
+            return None
+        except Exception as e:
+            self.logger.debug(f"Availability API error: {e}")
+            return None
+    
+    async def extract_content_length(self, page: Page) -> int:
+        """Extract the length of main content from a page"""
+        try:
+            content_info = await page.evaluate("""
+                () => {
+                    // Try various content selectors
+                    const contentSelectors = [
+                        'article', 'main', '[role="main"]', 
+                        '.article-body', '.post-content', '.entry-content',
+                        '.story-body', '.content-body', '.article-content'
+                    ];
+                    
+                    let maxLength = 0;
+                    let contentText = '';
+                    
+                    for (const selector of contentSelectors) {
+                        const elements = document.querySelectorAll(selector);
+                        for (const el of elements) {
+                            const text = el.innerText || el.textContent || '';
+                            if (text.length > maxLength) {
+                                maxLength = text.length;
+                                contentText = text;
+                            }
+                        }
+                    }
+                    
+                    // If no specific content area found, use body
+                    if (maxLength === 0) {
+                        const bodyText = document.body.innerText || document.body.textContent || '';
+                        maxLength = bodyText.length;
+                        contentText = bodyText;
+                    }
+                    
+                    // Check for paywall indicators in the content
+                    const paywallPhrases = [
+                        'subscribe to read', 'subscription required',
+                        'members only', 'sign up to continue'
+                    ];
+                    
+                    const hasPaywallText = paywallPhrases.some(phrase => 
+                        contentText.toLowerCase().includes(phrase)
+                    );
+                    
+                    return {
+                        length: maxLength,
+                        hasPaywallIndicators: hasPaywallText,
+                        sample: contentText.substring(0, 200)
+                    };
+                }
+            """)
+            
+            self.logger.debug(f"Content length: {content_info['length']} chars, paywall indicators: {content_info['hasPaywallIndicators']}")
+            return content_info['length']
+            
+        except Exception as e:
+            self.logger.debug(f"Error extracting content length: {e}")
+            return 0
+
+
 @dataclass
 class Config:
     """Configuration settings for the PDF converter"""
@@ -151,6 +339,10 @@ class Config:
     emulate_media: str = 'screen'  # Screen by default for better rendering
     prefer_css_page_size: bool = False
     auto_fix: bool = True  # Enable smart auto-fixes
+    use_archive_fallback: bool = True  # Try archive.org if paywall detected
+    skip_archive_paywall_check: bool = True  # Don't check for paywalls on archive.org URLs
+    skip_image_wait: bool = False  # Skip waiting for images to load
+    fast_mode: bool = False  # Ultra-fast mode with minimal waits
 
 
 class RenderingIssueDetector:
@@ -308,6 +500,7 @@ class WebsiteToPDFConverter:
         self.logger = self._setup_logging()
         self.start_time = time.time()
         self._setup_signal_handlers()
+        self.wayback_helper = WaybackMachineHelper(self.logger)
         
         # Apply slow mode if requested
         if self.config.slow:
@@ -489,6 +682,10 @@ class WebsiteToPDFConverter:
         # Wait for basic load state
         await page.wait_for_load_state(self.config.wait_until, timeout=30000)
         
+        # Skip additional waits in fast mode
+        if self.config.fast_mode:
+            return
+            
         # Additional wait time
         await page.wait_for_timeout(self.config.wait_time * 1000)
         
@@ -502,8 +699,126 @@ class WebsiteToPDFConverter:
             except:
                 pass
     
+    async def wait_for_images(self, page: Page, url: str):
+        """Wait for images to load, especially important for archive.org"""
+        try:
+            # For archive.org URLs, wait longer for images
+            is_archive = 'web.archive.org' in url
+            
+            self.logger.debug("⏳ Waiting for images to load...")
+            
+            # First check how many images we have
+            image_count = await page.evaluate("() => document.getElementsByTagName('img').length")
+            
+            if image_count > 0:
+                self.logger.debug(f"Found {image_count} images to wait for")
+                
+                # Set reasonable timeouts based on context
+                per_image_timeout = 1500 if is_archive else 1000  # 1.5s for archive, 1s otherwise
+                max_total_wait = 10000  # Never wait more than 10 seconds total
+                
+                # Wait for images with a global timeout
+                await page.evaluate(f"""
+                    async () => {{
+                        const images = Array.from(document.getElementsByTagName('img'));
+                        const startTime = Date.now();
+                        const maxWait = {max_total_wait};
+                        const perImageTimeout = {per_image_timeout};
+                        
+                        const promises = images.map(img => {{
+                            if (img.complete) return Promise.resolve();
+                            return new Promise((resolve) => {{
+                                img.addEventListener('load', resolve, {{ once: true }});
+                                img.addEventListener('error', resolve, {{ once: true }});
+                                // Individual image timeout
+                                setTimeout(resolve, perImageTimeout);
+                            }});
+                        }});
+                        
+                        // Race between all images loading or global timeout
+                        await Promise.race([
+                            Promise.all(promises),
+                            new Promise(resolve => setTimeout(resolve, maxWait))
+                        ]);
+                    }}
+                """)
+                
+                # Reduced additional wait for archive.org
+                if is_archive:
+                    await page.wait_for_timeout(1000)  # Reduced from 2000ms
+                    self.logger.debug("🖼️ Extra wait for archive.org image rendering")
+                else:
+                    await page.wait_for_timeout(300)  # Reduced from 500ms
+                
+                # Check how many images loaded successfully
+                image_stats = await page.evaluate("""
+                    () => {
+                        const images = Array.from(document.getElementsByTagName('img'));
+                        const loaded = images.filter(img => img.complete && img.naturalHeight > 0);
+                        return {
+                            total: images.length,
+                            loaded: loaded.length,
+                            failed: images.length - loaded.length
+                        };
+                    }
+                """)
+                
+                self.logger.info(f"🖼️ Images: {image_stats['loaded']}/{image_stats['total']} loaded")
+            else:
+                self.logger.debug("No images found on page")
+            
+        except Exception as e:
+            self.logger.debug(f"Error waiting for images: {e}")
+    
+    async def hide_archive_org_ui(self, page: Page):
+        """Hide archive.org toolbar and UI elements"""
+        try:
+            await page.evaluate("""
+                () => {
+                    // Hide Wayback Machine toolbar
+                    const toolbar = document.getElementById('wm-ipp-base');
+                    if (toolbar) toolbar.style.display = 'none';
+                    
+                    // Hide any Wayback Machine wrappers
+                    const wrappers = document.querySelectorAll('[id^="wm-ipp"]');
+                    wrappers.forEach(el => el.style.display = 'none');
+                    
+                    // Hide donation banners
+                    const banners = document.querySelectorAll('.donation-banner, #donato');
+                    banners.forEach(el => el.style.display = 'none');
+                    
+                    // Inject CSS to ensure they stay hidden
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        #wm-ipp-base, [id^="wm-ipp"], .donation-banner, #donato {
+                            display: none !important;
+                        }
+                        body {
+                            margin-top: 0 !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            """)
+            self.logger.debug("Archive.org UI elements hidden")
+        except Exception as e:
+            self.logger.debug(f"Could not hide archive.org UI: {e}")
+    
     async def smart_scroll_and_expand(self, page: Page):
         """Intelligent scrolling with content expansion"""
+        # Skip most waits in fast mode
+        if self.config.fast_mode:
+            # Just do the essential scrolls without waits
+            await page.evaluate("""
+                () => {
+                    window.scrollTo(0, 1000);
+                    setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
+                    setTimeout(() => window.scrollTo(0, 0), 200);
+                }
+            """)
+            await page.wait_for_timeout(300)  # Single minimal wait
+            return
+        
         # Quick scroll to trigger lazy loading
         await page.evaluate("window.scrollTo(0, 1000)")
         await page.wait_for_timeout(300)
@@ -541,6 +856,103 @@ class WebsiteToPDFConverter:
         await page.evaluate("window.scrollTo(0, 0)")
         await page.wait_for_timeout(200)
     
+    async def find_best_archive_snapshot(self, sorted_snapshots: List[Tuple[str, int]]) -> Optional[str]:
+        """Return the first working snapshot from pre-sorted list"""
+        # Since snapshots are already sorted by content length, just return the first one
+        # We'll try them in order during conversion
+        if sorted_snapshots:
+            best_url, content_length = sorted_snapshots[0]
+            self.logger.info(f"🎯 Selected snapshot with {content_length:,} bytes")
+            return best_url
+        return None
+    
+    async def detect_paywall(self, page: Page, response, url: str = "") -> bool:
+        """Detect if the page has a paywall"""
+        # Skip paywall detection for archive.org URLs if configured
+        if url and 'web.archive.org' in url and getattr(self.config, 'skip_archive_paywall_check', True):
+            self.logger.debug("Skipping paywall detection for archive.org URL")
+            return False
+        
+        # Check for common paywall indicators
+        
+        # 1. HTTP status codes
+        if response and response.status in [401, 403, 402]:
+            self.logger.debug(f"Paywall detected: HTTP {response.status}")
+            return True
+        
+        # 2. Check page content for paywall indicators
+        try:
+            paywall_indicators = await page.evaluate("""
+                () => {
+                    const text = document.body?.innerText || '';
+                    const html = document.documentElement.innerHTML;
+                    
+                    // Common paywall patterns
+                    const paywallPatterns = [
+                        /subscribe.{0,20}to.{0,20}(read|view|access)/i,
+                        /subscription.{0,20}required/i,
+                        /become.{0,20}a.{0,20}(member|subscriber)/i,
+                        /article.{0,20}limit.{0,20}reached/i,
+                        /paywall/i,
+                        /premium.{0,20}content/i,
+                        /members?.{0,20}only/i,
+                        /sign.{0,20}up.{0,20}to.{0,20}continue/i,
+                        /create.{0,20}free.{0,20}account.{0,20}to.{0,20}(read|view)/i,
+                        /you've.{0,20}reached.{0,20}your.{0,20}limit/i,
+                        /register.{0,20}to.{0,20}read/i
+                    ];
+                    
+                    // Check for paywall classes/ids
+                    const paywallSelectors = [
+                        '.paywall', '#paywall', '.subscription-wall',
+                        '.meter-wall', '.regwall', '.payment-wall',
+                        '[data-paywall]', '[class*="paywall"]',
+                        '.piano-paywall', '.tinypass'
+                    ];
+                    
+                    // Check text content
+                    for (const pattern of paywallPatterns) {
+                        if (pattern.test(text)) {
+                            return { hasPaywall: true, reason: 'text_pattern' };
+                        }
+                    }
+                    
+                    // Check for paywall elements
+                    for (const selector of paywallSelectors) {
+                        if (document.querySelector(selector)) {
+                            return { hasPaywall: true, reason: 'paywall_element' };
+                        }
+                    }
+                    
+                    // Check if main content is very short (often indicates truncated article)
+                    const articleSelectors = ['article', 'main', '.article-body', '.post-content'];
+                    let contentLength = 0;
+                    for (const selector of articleSelectors) {
+                        const element = document.querySelector(selector);
+                        if (element) {
+                            contentLength = element.innerText.length;
+                            break;
+                        }
+                    }
+                    
+                    if (contentLength > 0 && contentLength < 500 && text.length > 1000) {
+                        // Short article content but long page (likely paywall)
+                        return { hasPaywall: true, reason: 'truncated_content' };
+                    }
+                    
+                    return { hasPaywall: false };
+                }
+            """)
+            
+            if paywall_indicators['hasPaywall']:
+                self.logger.debug(f"Paywall detected via {paywall_indicators['reason']}")
+                return True
+                
+        except Exception as e:
+            self.logger.debug(f"Error checking for paywall: {e}")
+        
+        return False
+
     async def convert_with_smart_fixes(self, page: Page, url: str) -> Tuple[bool, str, Optional[str]]:
         """Convert with automatic issue detection and fixes"""
         try:
@@ -553,6 +965,10 @@ class WebsiteToPDFConverter:
                 timeout=self.config.timeout * 1000
             )
             
+            # Check for paywall
+            if await self.detect_paywall(page, response, url):
+                raise PaywallError(f"Paywall detected on {url}")
+            
             if response and response.status >= 400:
                 raise Exception(f"HTTP {response.status} error")
             
@@ -564,8 +980,16 @@ class WebsiteToPDFConverter:
             # Wait for initial load
             await self.wait_for_page_load(page)
             
+            # Hide archive.org UI if this is an archive URL
+            if 'web.archive.org' in url:
+                await self.hide_archive_org_ui(page)
+            
             # Smart content expansion and scrolling
             await self.smart_scroll_and_expand(page)
+            
+            # Wait for images to load (especially important for archive.org)
+            if not self.config.block_images and not self.config.skip_image_wait and not self.config.fast_mode:
+                await self.wait_for_images(page, url)
             
             if self.config.auto_fix:
                 # Detect and fix rendering issues
@@ -587,12 +1011,16 @@ class WebsiteToPDFConverter:
                         self.logger.debug(f"  ✓ {fix}")
                     
                     # Wait for fixes to take effect
-                    await page.wait_for_timeout(1000)
-                    
-                    # Re-scroll after fixes
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    await page.wait_for_timeout(500)
-                    await page.evaluate("window.scrollTo(0, 0)")
+                    if not self.config.fast_mode:
+                        await page.wait_for_timeout(1000)
+                        
+                        # Re-scroll after fixes
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await page.wait_for_timeout(500)
+                        await page.evaluate("window.scrollTo(0, 0)")
+                    else:
+                        # Fast mode: minimal wait
+                        await page.wait_for_timeout(200)
             
             # Generate PDF with optimized settings
             self.logger.info("📄 Generating PDF...")
@@ -614,13 +1042,18 @@ class WebsiteToPDFConverter:
             
             return True, output_path, None
             
+        except PaywallError:
+            # Re-raise PaywallError so it can be caught by convert_with_retry
+            raise
         except Exception as e:
             return False, "", str(e)
     
-    async def convert_with_retry(self, page: Page, url: str) -> Tuple[bool, str, str]:
-        """Convert with retry logic"""
+    async def convert_with_retry(self, page: Page, url: str, is_archive_url: bool = False) -> Tuple[bool, str, str]:
+        """Convert with retry logic and Wayback Machine fallback"""
         retry_delay = 1
         output_path = ""
+        original_url = url
+        has_tried_archive = False
         
         for attempt in range(1, self.config.max_retries + 1):
             try:
@@ -633,8 +1066,76 @@ class WebsiteToPDFConverter:
                 else:
                     raise Exception(error)
                     
+            except PaywallError as e:
+                self.logger.warning(f"🚫 Paywall detected: {str(e)}")
+                
+                # If this is already an archive URL or we've disabled archive fallback, fail
+                if is_archive_url or not getattr(self.config, 'use_archive_fallback', True) or has_tried_archive:
+                    return False, output_path, str(e)
+                
+                # Try Wayback Machine (only once)
+                has_tried_archive = True
+                self.logger.info("🕰️ Attempting to use Wayback Machine...")
+                sorted_snapshots = await self.wayback_helper.find_archived_url(original_url)
+                
+                if sorted_snapshots:
+                    self.logger.info(f"📜 Found {len(sorted_snapshots)} archive snapshots (pre-sorted by size)")
+                    
+                    # Try snapshots in order of content length (largest first)
+                    for idx, (archive_url, content_length) in enumerate(sorted_snapshots):
+                        try:
+                            self.logger.info(f"🔄 Trying snapshot {idx + 1}/{len(sorted_snapshots)} ({content_length:,} bytes)")
+                            success, output_path, error = await self.convert_with_smart_fixes(page, archive_url)
+                            if success:
+                                return True, output_path, ""
+                        except Exception as archive_e:
+                            self.logger.warning(f"Snapshot {idx + 1} failed: {str(archive_e)}")
+                            if idx < len(sorted_snapshots) - 1:
+                                await asyncio.sleep(0.5)  # Brief pause between attempts
+                    
+                    return False, output_path, "All archive snapshots failed"
+                else:
+                    self.logger.warning("❌ No archived versions found")
+                    return False, output_path, f"Paywall detected and no archive found: {str(e)}"
+                    
             except Exception as e:
                 self.logger.warning(f"Attempt {attempt} failed: {str(e)}")
+                
+                # Check if this might be a network/access issue that archive.org could help with
+                error_str = str(e).lower()
+                is_access_issue = any(pattern in error_str for pattern in [
+                    'err_http2_protocol_error',
+                    'err_connection_refused',
+                    'err_connection_reset',
+                    'err_timed_out',
+                    'http 403',
+                    'http 401',
+                    'access denied',
+                    'forbidden'
+                ])
+                
+                if (is_access_issue and not is_archive_url and 
+                    getattr(self.config, 'use_archive_fallback', True) and 
+                    not has_tried_archive and attempt == self.config.max_retries):
+                    # Try archive.org as last resort for network/access issues
+                    has_tried_archive = True
+                    self.logger.info("🕰️ Network/access issue - trying Wayback Machine...")
+                    sorted_snapshots = await self.wayback_helper.find_archived_url(original_url)
+                    
+                    if sorted_snapshots:
+                        self.logger.info(f"📜 Found {len(sorted_snapshots)} archive snapshots (pre-sorted by size)")
+                        
+                        # Try the largest snapshot first
+                        archive_url, content_length = sorted_snapshots[0]
+                        self.logger.info(f"🎯 Trying largest snapshot ({content_length:,} bytes)")
+                        try:
+                            success, output_path, error = await self.convert_with_smart_fixes(page, archive_url)
+                            if success:
+                                return True, output_path, ""
+                            else:
+                                return False, output_path, f"Archive attempt failed: {error}"
+                        except Exception as archive_e:
+                            return False, output_path, f"Archive attempt failed: {str(archive_e)}"
                 
                 if attempt < self.config.max_retries:
                     self.logger.info(f"⏳ Waiting {retry_delay}s before retry...")
@@ -882,17 +1383,26 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    # Smart mode (default) - auto-detects and fixes issues
+    # Smart mode (default) - auto-detects and fixes issues, uses archive.org for paywalls
     python website_to_pdf.py https://example.com
+    
+    # Fast mode - minimal waits for quick conversions
+    python website_to_pdf.py https://example.com --fast
+    
+    # Archive.org URL with fast mode and skip image wait
+    python website_to_pdf.py https://web.archive.org/web/20241114192407id_/https://www.washingtonpost.com/science/2024/11/14/chatgpt-ai-poetry-study-creative/ --fast --skip-image-wait
     
     # Complex essay with rendering fixes
     python website_to_pdf.py https://www.darioamodei.com/essay/machines-of-loving-grace
     
+    # Paywalled article - automatically tries archive.org
+    python website_to_pdf.py https://www.telegraph.co.uk/some-article
+    
     # Wikipedia article - fast and clean
     python website_to_pdf.py https://en.wikipedia.org/wiki/Artificial_intelligence
     
-    # Disable auto-fixes
-    python website_to_pdf.py https://example.com --no-auto-fix
+    # Disable archive.org fallback
+    python website_to_pdf.py https://example.com --no-archive-fallback
     
     # Block images for faster conversion
     python website_to_pdf.py https://example.com --block-images
@@ -925,12 +1435,18 @@ Examples:
     # Speed and rendering options
     parser.add_argument('--slow', action='store_true',
                        help='Slow mode: longer waits for complex sites')
+    parser.add_argument('--fast', action='store_true', dest='fast_mode',
+                       help='Fast mode: minimal waits, may miss some content')
     parser.add_argument('--block-images', action='store_true',
                        help='Block images for faster loading')
+    parser.add_argument('--skip-image-wait', action='store_true',
+                       help='Skip waiting for images to load')
     parser.add_argument('--media', choices=['print', 'screen'], default='screen',
                        dest='emulate_media', help='Media type to emulate (default: screen)')
     parser.add_argument('--no-auto-fix', action='store_false', dest='auto_fix',
                        help='Disable automatic layout fixes')
+    parser.add_argument('--no-archive-fallback', action='store_false', dest='use_archive_fallback',
+                       help='Disable archive.org fallback for paywalled content')
     
     # Debug and config
     parser.add_argument('--debug', action='store_true', help='Enable debug mode with verbose logging')
