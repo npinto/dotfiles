@@ -599,7 +599,7 @@ def create_pdfs_verbose(output_dir, document_code, document_title=None, ocr_jobs
             console.print("  Install with: brew install ghostscript")
 
 
-def download_docsend(url, email="nicolas.pinto@gmail.com", passcode="", slide_count=None, max_workers=8, ocr_jobs=None, use_llm_title=False):
+def download_docsend(url, email=None, passcode="", slide_count=None, max_workers=8, ocr_jobs=None, use_llm_title=False):
     """Download DocSend presentation with enhanced features."""
     
     session = requests.Session()
@@ -650,14 +650,19 @@ def download_docsend(url, email="nicolas.pinto@gmail.com", passcode="", slide_co
         if authenticate_with_email(session, url, privacy_email, passcode, headers):
             authenticated_email = privacy_email
         else:
-            # Privacy email failed, try user email
-            console.print(f"\n[bold]Privacy email failed, trying user-provided email...[/bold]")
-            
-            if authenticate_with_email(session, url, email, passcode, headers):
-                authenticated_email = email
+            # Privacy email failed, try user email if provided
+            if email:
+                console.print(f"\n[bold]Privacy email failed, trying user-provided email...[/bold]")
+                
+                if authenticate_with_email(session, url, email, passcode, headers):
+                    authenticated_email = email
+                else:
+                    console.print(f"\n[red]Authentication failed with both emails[/red]")
+                    console.print(f"[red]Unable to access document[/red]")
+                    return None
             else:
-                console.print(f"\n[red]Authentication failed with both emails[/red]")
-                console.print(f"[red]Unable to access document[/red]")
+                console.print(f"\n[red]Privacy email failed and no user email provided[/red]")
+                console.print(f"[yellow]Try running again with --email YOUR_EMAIL[/yellow]")
                 return None
     else:
         console.print("[green]✓ No authentication required - document is public[/green]")
@@ -726,7 +731,7 @@ def main():
     )
     
     parser.add_argument("url", help="DocSend URL")
-    parser.add_argument("--email", default="nicolas.pinto@gmail.com", help="Fallback email if privacy email fails")
+    parser.add_argument("--email", help="Fallback email if privacy email fails")
     parser.add_argument("--passcode", default="", help="Passcode if required")
     parser.add_argument("--slides", type=int, help="Override automatic detection")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel download workers (default: 8)")
