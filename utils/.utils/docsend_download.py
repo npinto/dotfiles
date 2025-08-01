@@ -6,6 +6,7 @@ DocSend Downloader - Enhanced version with verbose OCR and title extraction
 import argparse
 import hashlib
 import json
+import logging
 import os
 import re
 import subprocess
@@ -28,6 +29,37 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
 from rich.table import Table
 
 console = Console()
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(level):
+    """Set up logging configuration."""
+    logging_level = getattr(logging, level.upper(), logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging_level)
+    console_handler.setFormatter(formatter)
+    
+    # Set up root logger
+    logging.basicConfig(
+        level=logging_level,
+        handlers=[console_handler]
+    )
+    
+    # Also configure requests library logging
+    requests_logger = logging.getLogger('requests.packages.urllib3')
+    requests_logger.setLevel(logging.WARNING if logging_level > logging.DEBUG else logging.DEBUG)
+    
+    logger.info(f"Logging configured at {level.upper()} level")
 
 
 def get_image_hash(image_data):
@@ -170,9 +202,11 @@ Suggested title:"""
 def authenticate_with_email(session, url, email, passcode, headers):
     """Try to authenticate with a specific email."""
     console.print(f"Trying email: [bold cyan]{email}[/bold cyan]")
+    logger.info(f"Attempting authentication with email: {email}")
     
     # Get the page first to extract CSRF token
     response = session.get(url)
+    logger.debug(f"Initial auth page response: {response.status_code}")
     
     # Extract CSRF token
     csrf_match = re.search(r'name="authenticity_token"\s+value="([^"]+)"', response.text)
@@ -197,13 +231,16 @@ def authenticate_with_email(session, url, email, passcode, headers):
         'Referer': url,
     })
     
+    logger.debug(f"Posting auth data to {url}")
     auth_response = session.post(url, data=auth_data, headers=auth_headers, allow_redirects=True)
+    logger.debug(f"Auth response status: {auth_response.status_code}, History: {[r.status_code for r in auth_response.history]}")
     
     # Check if authentication was successful
     if auth_response.status_code in [200, 302] or (auth_response.history and any(r.status_code == 302 for r in auth_response.history)):
         # Additional check: try to access page_data/1
         document_code = url.strip('/').split('/')[-1]
         test_url = f"https://docsend.com/view/{document_code}/page_data/1"
+        logger.debug(f"Testing authentication by accessing: {test_url}")
         test_response = session.get(test_url, headers={'Accept': 'application/json'})
         
         if test_response.status_code == 200:
@@ -222,18 +259,22 @@ def authenticate_with_email(session, url, email, passcode, headers):
 def download_image_batch(session, document_code, start_idx, batch_size=8):
     """Download a batch of images in parallel."""
     console.print(f"[cyan]Downloading batch: slides {start_idx} to {start_idx + batch_size - 1}[/cyan]")
+    logger.debug(f"Starting batch download for slides {start_idx} to {start_idx + batch_size - 1}")
     
     def download_single(idx):
         page_url = f"https://docsend.com/view/{document_code}/page_data/{idx}"
         
         try:
+            logger.debug(f"Requesting page data for slide {idx}: {page_url}")
             resp = session.get(page_url, headers={'Accept': 'application/json'}, timeout=10)
+            logger.debug(f"Slide {idx} response: {resp.status_code}")
             
             if resp.status_code == 200:
                 data = resp.json()
                 image_url = data.get('imageUrl')
                 
                 if image_url:
+                    logger.debug(f"Downloading image for slide {idx}: {image_url}")
                     img_resp = session.get(image_url, timeout=30)
                     
                     if img_resp.status_code == 200:
@@ -243,6 +284,7 @@ def download_image_batch(session, document_code, start_idx, batch_size=8):
                     else:
                         console.print(f"  ✗ Slide {idx}: Image download failed")
         except Exception as e:
+            logger.error(f"Error downloading slide {idx}: {str(e)}")
             console.print(f"  ✗ Slide {idx}: Error - {str(e)}")
         
         return idx, None, None, None
@@ -264,6 +306,7 @@ def download_image_batch(session, document_code, start_idx, batch_size=8):
 def detect_slide_count_auto(session, document_code):
     """Automatically detect slide count without user interaction."""
     console.print("\n[bold yellow]Auto-detecting slide count...[/bold yellow]\n")
+    logger.info(f"Starting automatic slide count detection for document: {document_code}")
     
     all_hashes = {}
     batch_size = 8
@@ -279,6 +322,7 @@ def detect_slide_count_auto(session, document_code):
                 # Check for duplicates
                 for prev_idx, (prev_hash, prev_size) in all_hashes.items():
                     if prev_hash == img_hash and idx > prev_idx:
+                        logger.info(f"Found duplicate: slide {idx} matches slide {prev_idx}")
                         console.print(f"\n[bold green]✓ Found duplicate: slide {idx} matches slide {prev_idx}[/bold green]")
                         console.print(f"[bold green]Document has {prev_idx} slides[/bold green]\n")
                         return prev_idx
@@ -289,6 +333,7 @@ def detect_slide_count_auto(session, document_code):
                 console.print("[red]Cannot access slide 1 - authentication may have failed[/red]")
                 return None
             else:
+                logger.info(f"No valid slide at position {i}, document has {i-1} slides")
                 console.print(f"\n[bold green]✓ No valid slide at position {i}[/bold green]")
                 console.print(f"[bold green]Document has {i-1} slides[/bold green]\n")
                 return i - 1
@@ -602,6 +647,8 @@ def create_pdfs_verbose(output_dir, document_code, document_title=None, ocr_jobs
 def download_docsend(url, email=None, passcode="", slide_count=None, max_workers=8, ocr_jobs=None, use_llm_title=False):
     """Download DocSend presentation with enhanced features."""
     
+    logger.info(f"Starting download for URL: {url}")
+    
     session = requests.Session()
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -613,17 +660,47 @@ def download_docsend(url, email=None, passcode="", slide_count=None, max_workers
     }
     session.headers.update(headers)
     
-    # Extract document code - strip query parameters and fragments
+    # First, follow any redirects to get the actual document URL
+    logger.info("Following redirects to resolve actual document URL...")
+    try:
+        initial_response = session.get(url, allow_redirects=True)
+        resolved_url = initial_response.url
+        logger.info(f"Resolved URL: {resolved_url}")
+        
+        # If we got redirected, use the final URL
+        if resolved_url != url:
+            console.print(f"[yellow]Redirected to: {resolved_url}[/yellow]")
+            url = resolved_url
+    except Exception as e:
+        logger.error(f"Error resolving URL: {e}")
+        console.print(f"[red]Error resolving URL: {e}[/red]")
+        return None
+    
+    # Extract document code from the resolved URL
     parsed_url = urlparse(url)
     # Clean path by removing query parameters and fragments
     clean_path = parsed_url.path.strip('/')
-    document_code = clean_path.split('/')[-1]
+    path_parts = clean_path.split('/')
+    
+    # Handle both /view/xxx and /v/xxx/yyy patterns
+    if 'view' in path_parts:
+        # For URLs like /view/99kv5hrhcehau648
+        view_index = path_parts.index('view')
+        if view_index + 1 < len(path_parts):
+            document_code = path_parts[view_index + 1]
+        else:
+            document_code = path_parts[-1]
+    else:
+        # For other patterns, use the last part
+        document_code = path_parts[-1]
     
     # Ensure document code doesn't contain query parameters
     if '?' in document_code:
         document_code = document_code.split('?')[0]
     if '#' in document_code:
         document_code = document_code.split('#')[0]
+    
+    logger.debug(f"Extracted document code: {document_code}")
         
     # Rebuild clean URL without query parameters
     clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
@@ -636,7 +713,9 @@ def download_docsend(url, email=None, passcode="", slide_count=None, max_workers
     
     # Initial request and authentication
     console.print("\n[bold]Checking authentication requirements...[/bold]")
+    logger.info("Checking if authentication is required...")
     response = session.get(url)
+    logger.debug(f"Initial response status: {response.status_code}")
     
     authenticated_email = None
     
@@ -737,8 +816,12 @@ def main():
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel download workers (default: 8)")
     parser.add_argument("--ocr-jobs", type=int, help="Number of CPU cores for OCR processing (default: all available)")
     parser.add_argument("--llm-title", action="store_true", help="Use phi3.5 mini LLM to suggest better title from OCR content")
+    parser.add_argument("--log", choices=['debug', 'info', 'warning', 'error'], default='warning', help="Set logging level (default: warning)")
     
     args = parser.parse_args()
+    
+    # Set up logging
+    setup_logging(args.log)
     
     download_docsend(args.url, args.email, args.passcode, args.slides, args.workers, args.ocr_jobs, args.llm_title)
 
