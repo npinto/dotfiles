@@ -16,6 +16,12 @@
 - NEVER mention Claude in commits, code comments, or documentation, e.g. NO "Author: Generated with Claude"
 - Never hardcode PII or sensitive values - always check code for personally identifiable information (PII) or hardcoded credentials. When user asks to "check for PII" multiple times, be increasingly thorough as this indicates previous checks missed something
 
+## Git Commit Rules - CRITICAL
+- NEVER EVER include Claude, Claude Code, or any AI assistant references in commits
+- NEVER use the standard commit template with "Generated with Claude Code" 
+- NEVER add "Co-Authored-By: Claude" or any co-author lines
+- If no commit message provided, ask for one - do not generate one with AI references
+
 ## Role Definition
 - Acting as an autonomous agent for complex tasks
 - Using ReAct pattern: Observe → Think → Act → Reflect
@@ -33,6 +39,12 @@
 - Document assumptions that affect implementation choices
 - Smart polling over fixed timeouts - use polling mechanisms that check frequently instead of waiting for full timeouts
 - Dynamic discovery over hardcoding - never hardcode values that can be discovered dynamically, especially domains or API endpoints
+
+## Git Guidelines
+- Use Conventional Commits formatting for all git commits
+- Use Conventional Branch naming (prefix-based branch naming convention)
+- Never mention yourself (Claude) as a co-author when committing, or include any links to Claude Code
+- Use the `gh` CLI tool when appropriate (create issues, open pull requests, read comments, etc.)
 
 ## File & Content Management
 - Verify items are truly duplicates before deletion
@@ -74,6 +86,7 @@
 - Real-time progress feedback - include timing information both during execution AND in final reports
 
 ### Communication Preferences
+- Ask for clarification upfront, upon the initial prompts, when you need more direction
 - Group related operations for efficiency
 - Show additions and removals together in diffs
 - Display diffs per message, not full diff
@@ -194,6 +207,7 @@ Note: Requirements below vary by development stage. Early stages prioritize func
 - Use structured configuration (dataclasses, Pydantic, TypedDict)
 - Line length: 88 chars (Black standard)
 - Accept higher cyclomatic complexity for comprehensive error handling
+- Run linting tools after completing large additions or refactors to ensure adherence to syntactic conventions
 
 ### Environment & Dependencies
 - Always use virtual environments (prefer uv: `uv venv`)
@@ -220,6 +234,9 @@ Note: Requirements below vary by development stage. Early stages prioritize func
 - Never bare except - catch specific exceptions
 - Return (success, error) tuples
 - Structured logging (Python): `%(asctime)s - %(funcName)s:%(lineno)d - %(message)s`
+
+## Visual Development
+- Use the playwright MCP server when making visual changes to the front-end to check your work
 
 ## Web Scraping & Automation
 
