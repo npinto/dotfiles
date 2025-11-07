@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+./docsend_download_v2.py #!/usr/bin/env python3
 """
 DocSend Downloader - Enhanced version with verbose OCR and title extraction
 """
@@ -238,8 +238,14 @@ def authenticate_with_email(session, url, email, passcode, headers):
     # Check if authentication was successful
     if auth_response.status_code in [200, 302] or (auth_response.history and any(r.status_code == 302 for r in auth_response.history)):
         # Additional check: try to access page_data/1
-        document_code = url.strip('/').split('/')[-1]
-        test_url = f"https://docsend.com/view/{document_code}/page_data/1"
+        # For folder URLs, we need to use the full path
+        if '/d/' in url:
+            # This is a folder URL, use the full path
+            test_url = f"{url}/page_data/1"
+        else:
+            # Simple URL, use the document code
+            document_code = url.strip('/').split('/')[-1]
+            test_url = f"https://docsend.com/view/{document_code}/page_data/1"
         logger.debug(f"Testing authentication by accessing: {test_url}")
         test_response = session.get(test_url, headers={'Accept': 'application/json'})
         
@@ -256,13 +262,17 @@ def authenticate_with_email(session, url, email, passcode, headers):
     return False
 
 
-def download_image_batch(session, document_code, start_idx, batch_size=8):
+def download_image_batch(session, document_code, start_idx, batch_size=8, full_path=None):
     """Download a batch of images in parallel."""
     console.print(f"[cyan]Downloading batch: slides {start_idx} to {start_idx + batch_size - 1}[/cyan]")
     logger.debug(f"Starting batch download for slides {start_idx} to {start_idx + batch_size - 1}")
-    
+
     def download_single(idx):
-        page_url = f"https://docsend.com/view/{document_code}/page_data/{idx}"
+        # Use full path if provided (for folder-based URLs)
+        if full_path:
+            page_url = f"{full_path}/page_data/{idx}"
+        else:
+            page_url = f"https://docsend.com/view/{document_code}/page_data/{idx}"
         
         try:
             logger.debug(f"Requesting page data for slide {idx}: {page_url}")
@@ -303,19 +313,19 @@ def download_image_batch(session, document_code, start_idx, batch_size=8):
     return results
 
 
-def detect_slide_count_auto(session, document_code):
+def detect_slide_count_auto(session, document_code, full_path=None):
     """Automatically detect slide count without user interaction."""
     console.print("\n[bold yellow]Auto-detecting slide count...[/bold yellow]\n")
     logger.info(f"Starting automatic slide count detection for document: {document_code}")
-    
+
     all_hashes = {}
     batch_size = 8
     last_valid_slide = 0
-    
+
     # First, check single slides to handle small documents
     console.print("[cyan]Checking first few slides individually...[/cyan]")
     for i in range(1, 6):
-        results = download_image_batch(session, document_code, i, 1)
+        results = download_image_batch(session, document_code, i, 1, full_path)
         if results:
             last_valid_slide = i
             for idx, (img_hash, size, content) in results.items():
@@ -343,9 +353,8 @@ def detect_slide_count_auto(session, document_code):
     
     for batch_num in range(1, 20):  # Check up to 160 slides
         start_idx = 5 + (batch_num - 1) * batch_size + 1
-        
         console.print(f"\n[bold]Batch {batch_num}:[/bold]")
-        batch_results = download_image_batch(session, document_code, start_idx, batch_size)
+        batch_results = download_image_batch(session, document_code, start_idx, batch_size, full_path)
         
         if not batch_results:
             # Empty batch - we've reached the end
@@ -387,14 +396,18 @@ def detect_slide_count_auto(session, document_code):
     return last_valid_slide
 
 
-def download_all_slides_parallel(session, document_code, slide_count, output_dir, max_workers=8):
+def download_all_slides_parallel(session, document_code, slide_count, output_dir, max_workers=8, full_path=None):
     """Download all slides in parallel with progress tracking."""
     console.print(f"\n[bold]Downloading all {slide_count} slides in parallel (workers: {max_workers})...[/bold]\n")
-    
+
     def download_slide(slide_num):
         """Download a single slide."""
         try:
-            page_url = f"https://docsend.com/view/{document_code}/page_data/{slide_num}"
+            # Use full path if provided (for folder-based URLs)
+            if full_path:
+                page_url = f"{full_path}/page_data/{slide_num}"
+            else:
+                page_url = f"https://docsend.com/view/{document_code}/page_data/{slide_num}"
             resp = session.get(page_url, headers={'Accept': 'application/json'}, timeout=10)
             
             if resp.status_code == 200:
@@ -681,13 +694,25 @@ def download_docsend(url, email=None, passcode="", slide_count=None, max_workers
     # Clean path by removing query parameters and fragments
     clean_path = parsed_url.path.strip('/')
     path_parts = clean_path.split('/')
-    
-    # Handle both /view/xxx and /v/xxx/yyy patterns
+
+    # Handle both /view/xxx and /view/xxx/d/yyy patterns
+    # For folder URLs, we need special handling
+    full_doc_path = None  # Will be used for API calls on folder URLs
+
     if 'view' in path_parts:
-        # For URLs like /view/99kv5hrhcehau648
         view_index = path_parts.index('view')
         if view_index + 1 < len(path_parts):
-            document_code = path_parts[view_index + 1]
+            # Check if this is a folder URL with /d/ subdocument
+            if len(path_parts) > view_index + 2 and path_parts[view_index + 2] == 'd':
+                # Folder URL: /view/FOLDER/d/DOCUMENT
+                folder_code = path_parts[view_index + 1]
+                document_code = path_parts[view_index + 3] if len(path_parts) > view_index + 3 else folder_code
+                # Store the full path for API calls
+                full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
+                logger.debug(f"Folder URL detected. Using document: {document_code}, Full path: {full_doc_path}")
+            else:
+                # Simple URL: /view/DOCUMENT
+                document_code = path_parts[view_index + 1]
         else:
             document_code = path_parts[-1]
     else:
@@ -751,20 +776,20 @@ def download_docsend(url, email=None, passcode="", slide_count=None, max_workers
     
     # Auto-detect slide count
     if not slide_count:
-        detected = detect_slide_count_auto(session, document_code)
-        
+        detected = detect_slide_count_auto(session, document_code, full_doc_path)
+
         if not detected:
             console.print("[red]Failed to detect slide count[/red]")
             return None
-            
+
         slide_count = detected
-    
+
     # Create output directory
     output_dir = Path(f"{document_code}_downloads")
     output_dir.mkdir(exist_ok=True)
-    
+
     # Download all slides in parallel
-    successful = download_all_slides_parallel(session, document_code, slide_count, output_dir, max_workers)
+    successful = download_all_slides_parallel(session, document_code, slide_count, output_dir, max_workers, full_doc_path)
     
     # Try to extract title from first slide
     document_title = None
