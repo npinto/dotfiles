@@ -84,7 +84,7 @@ def setup_driver():
         logger.error(f"Failed to set up browser: {e}")
         raise
 
-def wait_for_element(driver, by, value, timeout=5, poll_frequency=0.1):
+def wait_for_element(driver, by, value, timeout=5, poll_frequency=0.5):
     """Wait for an element to be present with polling"""
     start_time = time.time()
     while time.time() - start_time < timeout:
