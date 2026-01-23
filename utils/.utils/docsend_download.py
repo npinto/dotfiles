@@ -1,4 +1,4 @@
-./docsend_download_v2.py #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 DocSend Downloader - Enhanced version with verbose OCR and title extraction
 """
