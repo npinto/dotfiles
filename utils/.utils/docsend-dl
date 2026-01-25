@@ -2205,6 +2205,17 @@ def download_docsend(
             session, document_code, slide_count, sandbox_base, max_workers, full_doc_path
         )
 
+        # If all downloads failed (e.g., HTTP 403), try Dropbox-embedded fallback
+        if successful == 0 and cookies_from_browser:
+            console.print("\n[yellow]All image downloads failed - trying Dropbox-embedded fallback...[/yellow]")
+            dropbox_slides = download_dropbox_embedded_document(
+                url, str(sandbox_base), cookies_from_browser
+            )
+            if dropbox_slides:
+                successful = dropbox_slides
+                is_dropbox_embedded = True
+                console.print(f"[green]✓ Successfully captured {successful} slide(s) via Dropbox fallback[/green]")
+
     # Extract document title and date (from sandbox)
     document_title = None
     document_date = None
