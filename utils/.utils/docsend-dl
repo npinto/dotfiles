@@ -13,19 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-import requests
-
-try:
-    from playwright.sync_api import sync_playwright
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-
-try:
-    import browser_cookie3
-    BROWSER_COOKIES_AVAILABLE = True
-except ImportError:
-    BROWSER_COOKIES_AVAILABLE = False
+from curl_cffi import requests as curl_requests
+from playwright.sync_api import sync_playwright
+import browser_cookie3
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
 from rich.table import Table
@@ -34,6 +24,17 @@ console = Console()
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# Default number of pages to analyze for title extraction (OCR + Claude vision)
+DEFAULT_TITLE_PAGES = 10
+
+# Check if Claude CLI is available
+def _check_claude_available():
+    """Check if claude CLI is available on the system."""
+    import shutil
+    return shutil.which("claude") is not None
+
+CLAUDE_AVAILABLE = _check_claude_available()
 
 
 def setup_logging(level):
@@ -63,9 +64,113 @@ def setup_logging(level):
     logger.info(f"Logging configured at {level.upper()} level")
 
 
+def get_physical_cpu_count():
+    """Get the number of physical (performance) CPU cores.
+
+    On Apple Silicon Macs, returns performance cores only (not efficiency cores).
+    On Intel Macs/Linux, returns physical cores (not hyperthreaded).
+    Falls back to os.cpu_count() if detection fails.
+    """
+    import os
+    import platform
+
+    try:
+        if platform.system() == "Darwin":
+            # macOS: try to get performance cores first (Apple Silicon)
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.perflevel0.physicalcpu"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return int(result.stdout.strip())
+
+            # Fallback: physical CPU count (Intel Mac)
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.physicalcpu"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return int(result.stdout.strip())
+
+        elif platform.system() == "Linux":
+            # Linux: count physical cores from /proc/cpuinfo
+            with open("/proc/cpuinfo") as f:
+                cores = set()
+                physical_id = None
+                core_id = None
+                for line in f:
+                    if line.startswith("physical id"):
+                        physical_id = line.split(":")[1].strip()
+                    elif line.startswith("core id"):
+                        core_id = line.split(":")[1].strip()
+                    elif line.strip() == "" and physical_id and core_id:
+                        cores.add((physical_id, core_id))
+                        physical_id = core_id = None
+                if cores:
+                    return len(cores)
+    except Exception:
+        pass
+
+    # Fallback to logical CPU count
+    return os.cpu_count() or 4
+
+
 def get_image_hash(image_data):
     """Get hash of image data."""
     return hashlib.md5(image_data).hexdigest()
+
+
+def extract_title_from_html(html_content):
+    """Extract document title from DocSend page HTML.
+
+    Parses the HTML response to extract the document title from:
+    1. The <title> tag (usually "Document Name - DocSend")
+    2. Open Graph meta tags (og:title)
+
+    Returns:
+        Document title string or None if not found
+    """
+    if not html_content:
+        return None
+
+    try:
+        # Try to extract from <title> tag
+        # DocSend titles are typically: "Document Name - DocSend" or "Document Name | DocSend"
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_content, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+            # Remove common suffixes like " - DocSend", " | DocSend"
+            title = re.sub(r'\s*[-|]\s*(DocSend|Docsend).*$', '', title, flags=re.IGNORECASE)
+            title = title.strip()
+            if title and len(title) > 3 and len(title) < 200:
+                logger.debug(f"Extracted title from <title> tag: {title}")
+                return title
+
+        # Try og:title meta tag
+        og_title_match = re.search(
+            r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']',
+            html_content,
+            re.IGNORECASE
+        )
+        if not og_title_match:
+            # Try alternate attribute order
+            og_title_match = re.search(
+                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:title["\']',
+                html_content,
+                re.IGNORECASE
+            )
+        if og_title_match:
+            title = og_title_match.group(1).strip()
+            title = re.sub(r'\s*[-|]\s*(DocSend|Docsend).*$', '', title, flags=re.IGNORECASE)
+            title = title.strip()
+            if title and len(title) > 3 and len(title) < 200:
+                logger.debug(f"Extracted title from og:title: {title}")
+                return title
+
+    except Exception as e:
+        logger.debug(f"Could not extract title from HTML: {e}")
+
+    return None
 
 
 def extract_title_from_image(image_path):
@@ -123,7 +228,7 @@ def extract_title_from_image(image_path):
     return None
 
 
-def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
+def suggest_title_with_claude(output_dir, slide_count, max_pages=DEFAULT_TITLE_PAGES):
     """Use claude -p with slide images to suggest a document title and extract date.
 
     Args:
@@ -136,6 +241,10 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
         - title: Suggested title (max 30 chars) or None if failed
         - date_str: Date string like "2024-01-15", "2024-01", "2024", or None
     """
+    if not CLAUDE_AVAILABLE:
+        console.print("\n[yellow]⚠ Claude CLI not available - skipping AI analysis[/yellow]")
+        return None, None
+
     console.print("\n[cyan]🤖 Using Claude to analyze document...[/cyan]")
 
     # Determine how many slides to use
@@ -153,39 +262,69 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
         console.print("[yellow]   No slides found[/yellow]")
         return None, None
 
+    # Extract OCR text from slides to help with accurate name/title extraction
+    # OCR the same slides we send to Claude for cross-referencing
+    ocr_texts = []
+    for slide_file in slide_files:  # OCR all slides we're sending to Claude
+        slide_path = output_dir / slide_file
+        try:
+            ocr_result = subprocess.run(
+                ["tesseract", str(slide_path), "stdout", "--psm", "3"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if ocr_result.returncode == 0 and ocr_result.stdout.strip():
+                # Take first 400 chars per slide
+                ocr_texts.append(f"[{slide_file}]\n{ocr_result.stdout.strip()[:400]}")
+        except Exception as e:
+            logger.debug(f"OCR extraction failed for {slide_file}: {e}")
+
+    ocr_text = "\n\n".join(ocr_texts)
+    if ocr_text:
+        console.print(f"   OCR extracted {len(ocr_text)} chars from {len(ocr_texts)} slide(s)")
+
     # Build file list for prompt
     files_str = ", ".join(slide_files)
 
-    # Build claude command - claude reads files when instructed in the prompt
-    prompt = (
-        f"Read {files_str} in this directory and extract two things:\n\n"
-        "1. TITLE: A concise, descriptive filename title (max 30 characters). "
-        "Should capture what the document is about (company name, topic, purpose). "
-        "Do not include generic words like 'Presentation', 'Slides', 'Deck'. "
-        "Do not include dates in the title.\n\n"
-        "2. DATE: Any document date you can find (creation date, last updated, "
-        "quarter/year mentioned, etc). Format as YYYY-MM-DD if full date found, "
-        "YYYY-MM if only month/year, or YYYY if only year. Use NONE if no date found.\n\n"
-        "Output EXACTLY in this format, nothing else:\n"
-        "TITLE: <title here>\n"
-        "DATE: <date or NONE>"
+    # Build a concise prompt - long/complex prompts cause Claude CLI to hang
+    # Use "through" syntax for file ranges to keep prompt short
+    if len(slide_files) > 1:
+        first_file = slide_files[0]
+        last_file = slide_files[-1]
+        files_ref = f"{first_file} through {last_file}"
+    else:
+        files_ref = slide_files[0]
+
+    # Include OCR text for name verification (keep it brief to avoid hang)
+    ocr_hint = ""
+    if ocr_text:
+        # Extract just key identifiers from OCR (names, companies) - first 500 chars
+        ocr_hint = f" OCR hints: {ocr_text[:500]}"
+
+    # Step 1: Extract title and date from slides
+    prompt1 = (
+        f"Read {files_ref}. Extract the document title (~30 chars, "
+        "capture company/topic, no generic words like Presentation/Deck/Slides, no dates) "
+        f"and any document date found (YYYY-MM-DD, YYYY-MM, or YYYY format).{ocr_hint} "
+        "Format as:\nTITLE: xxx\nDATE: xxx or NONE"
     )
 
-    cmd = ["claude", "-p", prompt]
+    cmd = ["claude", "-p", prompt1]
 
     try:
-        logger.debug(f"Running claude in {output_dir} with {len(slide_files)} files")
+        logger.debug(f"Running claude step 1 in {output_dir} with {len(slide_files)} files")
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=30,
             cwd=str(output_dir),
         )
 
         if result.returncode == 0 and result.stdout.strip():
             output = result.stdout.strip()
-            logger.debug(f"Claude output: {output}")
+            logger.debug(f"Claude step 1 output: {output}")
 
             # Parse the output
             title = None
@@ -202,8 +341,7 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
                     # Collapse whitespace and underscores to spaces
                     clean_title = clean_title.replace("_", " ")
                     clean_title = " ".join(clean_title.split())
-                    # Truncate to 30 chars
-                    clean_title = clean_title[:30].strip()
+                    clean_title = clean_title.strip()
                     if clean_title:
                         title = clean_title
 
@@ -215,6 +353,35 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
                             date_str = raw_date
                         else:
                             logger.debug(f"Invalid date format: {raw_date}")
+
+            # Step 2: If title is too long, ask Claude to shorten it
+            if title and len(title) > 40:
+                console.print(f"   Title too long ({len(title)} chars), refining...")
+                prompt2 = (
+                    f"Shorten this title to ~30 chars while keeping key info: '{title}'. "
+                    "Format as:\nTITLE: xxx"
+                )
+                cmd2 = ["claude", "-p", prompt2]
+                try:
+                    result2 = subprocess.run(
+                        cmd2,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                    )
+                    if result2.returncode == 0 and result2.stdout.strip():
+                        for line in result2.stdout.strip().split("\n"):
+                            line = line.strip()
+                            if line.upper().startswith("TITLE:"):
+                                short_title = line[6:].strip().strip('"\'')
+                                short_title = re.sub(r'[<>:"/\\|?*]', "", short_title)
+                                short_title = " ".join(short_title.split())
+                                if short_title:
+                                    logger.debug(f"Shortened: '{title}' -> '{short_title}'")
+                                    title = short_title
+                                break
+                except Exception as e:
+                    logger.debug(f"Step 2 refinement failed: {e}")
 
             if title:
                 console.print(f"   ✓ Title: '[green]{title}[/green]'")
@@ -244,30 +411,20 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=10):
 def discover_dataroom_documents(url, browser_name):
     """Use Playwright to discover all documents in a DocSend data room.
 
-    This uses a keyboard-based approach: select document row + Enter opens the
-    document in a new tab, which reveals the actual document URL.
+    This intercepts GraphQL API responses to extract document URLs directly,
+    which is more reliable than trying to click on documents to open them.
 
     Args:
         url: Data room URL (e.g., /view/s/xxx or /view/s/xxx/f/yyy)
         browser_name: Browser to load cookies from
 
     Returns:
-        List of (name, url) tuples for each document found
+        List of (name, url, folder_name) tuples for each document found
     """
-    if not PLAYWRIGHT_AVAILABLE:
-        console.print("[red]Playwright not installed - needed for data room discovery.[/red]")
-        console.print("[yellow]Install with: pip install playwright && playwright install chromium[/yellow]")
-        return []
-
-    if not BROWSER_COOKIES_AVAILABLE:
-        console.print("[red]browser-cookie3 not installed - needed for authenticated data rooms.[/red]")
-        return []
-
     console.print(f"\n[cyan]📂 Discovering documents in data room...[/cyan]")
 
     try:
         # Load cookies from browser
-        import browser_cookie3
         import time
 
         browser_funcs = {
@@ -298,6 +455,21 @@ def discover_dataroom_documents(url, browser_name):
                 cookie["secure"] = bool(c.secure)
             cookies.append(cookie)
 
+        # Extract base space URL (without /f/ folder filter)
+        # /view/s/SPACE_ID/f/FOLDER_ID -> /view/s/SPACE_ID
+        parsed = urlparse(url)
+        path_parts = parsed.path.strip("/").split("/")
+        if "/f/" in url:
+            # Remove folder part to get base URL
+            f_index = path_parts.index("f")
+            base_path = "/".join(path_parts[:f_index])
+            base_url = f"{parsed.scheme}://{parsed.netloc}/{base_path}"
+        else:
+            base_url = url
+
+        # Collect all GraphQL responses
+        all_graphql_responses = []
+
         with sync_playwright() as p:
             # Use headless mode with anti-detection
             browser = p.chromium.launch(
@@ -306,7 +478,7 @@ def discover_dataroom_documents(url, browser_name):
             )
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                viewport={"width": 1920, "height": 1080},
+                viewport={"width": 1920, "height": 1200},
             )
 
             # Remove webdriver detection
@@ -321,8 +493,24 @@ def discover_dataroom_documents(url, browser_name):
                 logger.warning(f"Could not add all cookies: {e}")
 
             page = context.new_page()
-            console.print(f"   Loading data room...")
-            page.goto(url, wait_until="networkidle")
+            page.set_default_timeout(60000)
+
+            # Intercept GraphQL responses to capture document data
+            def handle_graphql_route(route):
+                response = route.fetch()
+                if response.status == 200:
+                    try:
+                        body = response.json()
+                        all_graphql_responses.append(body)
+                    except Exception:
+                        pass
+                route.fulfill(response=response)
+
+            page.route('**/graphql', handle_graphql_route)
+
+            console.print(f"   Loading data room... [dim](this may take 30-60s)[/dim]")
+            page.goto(base_url, wait_until="networkidle", timeout=60000)
+            console.print(f"   Page loaded, waiting for content...")
             time.sleep(3)
 
             # Check if we're on an error page or auth page
@@ -341,123 +529,102 @@ def discover_dataroom_documents(url, browser_name):
                 browser.close()
                 return []
 
-            # Get all folders from sidebar (look for items with "X items" count)
+            # Get folder list from sidebar
             folder_items = page.query_selector_all('[role="listitem"]')
-            folders = []
+            folder_names = []
             for item in folder_items:
-                text = item.inner_text().strip()
-                # Folders have "X items" or "X item" in their text
-                if text and ("items" in text.lower() or "item" in text.lower()) and item.is_visible():
-                    # Extract folder name (first line)
+                try:
+                    text = item.inner_text().strip()
+                    if not text or not item.is_visible():
+                        continue
                     folder_name = text.split('\n')[0].strip()
-                    if folder_name:
-                        folders.append((item, folder_name))
-
-            # Remove duplicates
-            seen_names = set()
-            unique_folders = []
-            for item, name in folders:
-                if name not in seen_names:
-                    seen_names.add(name)
-                    unique_folders.append((item, name))
-
-            console.print(f"   Found {len(unique_folders)} folders")
-
-            # Collect all documents
-            all_documents = []
-            seen_urls = set()
-
-            # Helper function to get documents from current view
-            def get_docs_from_view(folder_name):
-                doc_rows = page.query_selector_all('[role="row"]')
-                docs_found = []
-                for row in doc_rows:
-                    text = row.inner_text().strip().split('\n')[0]
-                    # Skip headers, folders (have "items"), and empty rows
-                    if text and "Sort" not in text and "items" not in text.lower() and "item" not in text.lower() and row.is_visible():
-                        docs_found.append((row, text))
-                return docs_found
-
-            # First, get documents at root level (Home)
-            # Click on "Home" in sidebar to ensure we're at root
-            home_item = page.query_selector('[role="listitem"]:has-text("Home")')
-            if home_item:
-                try:
-                    home_item.click()
-                    time.sleep(1.5)
-
-                    console.print(f"   📁 Home (root)")
-                    root_docs = get_docs_from_view("Home")
-
-                    for row, doc_name in root_docs:
-                        pages_before = len(context.pages)
-                        try:
-                            row.click()
-                            time.sleep(0.2)
-                            page.keyboard.press("Enter")
-                            time.sleep(1.5)
-
-                            if len(context.pages) > pages_before:
-                                new_page = context.pages[-1]
-                                doc_url = new_page.url
-
-                                if doc_url not in seen_urls and "/d/" in doc_url:
-                                    seen_urls.add(doc_url)
-                                    all_documents.append((doc_name, doc_url, "Home"))
-                                    console.print(f"      • {doc_name[:45]}")
-
-                                new_page.close()
-                                time.sleep(0.3)
-                        except Exception as e:
-                            logger.debug(f"Error getting document URL: {e}")
-                            continue
-                except Exception:
-                    pass
-
-            # Then process each folder
-            for folder_elem, folder_name in unique_folders:
-                console.print(f"   📁 {folder_name}")
-
-                # Click folder to show its documents
-                try:
-                    folder_elem.click()
-                    time.sleep(1.5)
+                    if folder_name and folder_name != "Home" and folder_name not in folder_names:
+                        folder_names.append(folder_name)
                 except Exception:
                     continue
 
-                # Get document rows in this folder
-                docs_in_folder = get_docs_from_view(folder_name)
+            console.print(f"   Found {len(folder_names)} folders")
 
-                # Get URL for each document by selecting + Enter
-                for row, doc_name in docs_in_folder:
-                    pages_before = len(context.pages)
-
+            # Click each folder to trigger GraphQL requests for their contents
+            for idx, folder_name in enumerate(folder_names, 1):
+                console.print(f"   Scanning folder {idx}/{len(folder_names)}: {folder_name}...")
+                items = page.query_selector_all('[role="listitem"]')
+                for item in items:
                     try:
-                        row.click()
-                        time.sleep(0.2)
-                        page.keyboard.press("Enter")
-                        time.sleep(1.5)
-
-                        # Check for new page
-                        if len(context.pages) > pages_before:
-                            new_page = context.pages[-1]
-                            doc_url = new_page.url
-
-                            if doc_url not in seen_urls and "/d/" in doc_url:
-                                seen_urls.add(doc_url)
-                                all_documents.append((doc_name, doc_url, folder_name))
-                                console.print(f"      • {doc_name[:45]}")
-
-                            new_page.close()
-                            time.sleep(0.3)
-                    except Exception as e:
-                        logger.debug(f"Error getting document URL: {e}")
+                        text = item.inner_text().strip().split('\n')[0].strip()
+                        if text == folder_name and item.is_visible():
+                            item.click()
+                            page.wait_for_load_state('networkidle', timeout=10000)
+                            time.sleep(2)
+                            break
+                    except Exception:
                         continue
 
-            console.print(f"\n   ✓ Found {len(all_documents)} document(s) total")
+            # Wait for all async responses to complete
+            time.sleep(3)
 
             browser.close()
-            return all_documents
+
+        # Parse all GraphQL responses to extract documents
+        console.print(f"   Processing {len(all_graphql_responses)} API responses...")
+
+        def extract_docs_from_response(obj, current_folder='Home'):
+            """Recursively extract documents from GraphQL response."""
+            results = []
+            if isinstance(obj, dict):
+                folder = current_folder
+                if obj.get('__typename') == 'SpaceFolder' and 'name' in obj:
+                    folder = obj['name']
+
+                if obj.get('__typename') == 'SpaceDocument':
+                    href = obj.get('href', '')
+                    name = obj.get('name', '')
+                    if href and '/d/' in href:
+                        results.append((name, href, folder))
+
+                if 'contents' in obj and isinstance(obj.get('contents'), dict):
+                    nodes = obj['contents'].get('nodes', [])
+                    for node in nodes:
+                        results.extend(extract_docs_from_response(node, folder))
+
+                for k, v in obj.items():
+                    if k not in ('contents', 'nodes'):
+                        results.extend(extract_docs_from_response(v, folder))
+            elif isinstance(obj, list):
+                for item in obj:
+                    results.extend(extract_docs_from_response(item, current_folder))
+            return results
+
+        all_docs = {}  # href -> (name, folder)
+        for resp in all_graphql_responses:
+            for name, href, folder in extract_docs_from_response(resp):
+                if not href.startswith('http'):
+                    href = f'https://docsend.com{href}'
+                if href not in all_docs:
+                    all_docs[href] = (name, folder)
+
+        # Group by folder for display
+        by_folder = {}
+        for doc_url, (name, folder) in all_docs.items():
+            if folder not in by_folder:
+                by_folder[folder] = []
+            by_folder[folder].append((name, doc_url))
+
+        # Display results
+        for folder in ['Home'] + folder_names:
+            docs = by_folder.get(folder, [])
+            if docs:
+                console.print(f"   📁 {folder}: {len(docs)} docs")
+                for name, doc_url in docs:
+                    console.print(f"      • {name[:45]}")
+
+        # Convert to list format
+        documents_with_urls = []
+        for doc_url, (name, folder) in all_docs.items():
+            documents_with_urls.append((name, doc_url, folder))
+
+        console.print(f"\n   ✓ Discovered {len(documents_with_urls)} document(s) total")
+        return documents_with_urls
 
     except Exception as e:
         console.print(f"[red]   Error discovering documents: {e}[/red]")
@@ -476,11 +643,6 @@ def load_cookies_from_browser(browser_name, domain="docsend.com"):
     Returns:
         dict of cookies or None if failed
     """
-    if not BROWSER_COOKIES_AVAILABLE:
-        console.print("[red]browser-cookie3 not installed.[/red]")
-        console.print("[yellow]Install with: pip install browser-cookie3[/yellow]")
-        return None
-
     console.print(f"\n[cyan]🍪 Loading cookies from {browser_name}...[/cyan]")
 
     try:
@@ -530,11 +692,6 @@ def authenticate_spa_with_playwright(url, email, passcode):
         tuple of (cookie_dict, final_url) if successful, (None, None) if failed
         final_url may be different from input url (e.g., space -> document redirect)
     """
-    if not PLAYWRIGHT_AVAILABLE:
-        console.print("[red]Playwright not installed.[/red]")
-        console.print("[yellow]Install with: pip install playwright && playwright install chromium[/yellow]")
-        return None, None
-
     console.print("\n[cyan]🎭 Using Playwright for browser-based authentication...[/cyan]")
 
     try:
@@ -657,19 +814,10 @@ def authenticate_with_playwright_and_cookies(url, browser_name, passcode, email=
     Returns:
         tuple of (cookie_dict, final_url) if successful, (None, None) if failed
     """
-    if not PLAYWRIGHT_AVAILABLE:
-        console.print("[red]Playwright not installed.[/red]")
-        return None, None
-
-    if not BROWSER_COOKIES_AVAILABLE:
-        console.print("[red]browser-cookie3 not installed.[/red]")
-        return None, None
-
     console.print("\n[cyan]🎭 Using Playwright with browser cookies...[/cyan]")
 
     try:
         # Load cookies from browser
-        import browser_cookie3
         browser_funcs = {
             "brave": browser_cookie3.brave,
             "chrome": browser_cookie3.chrome,
@@ -973,119 +1121,128 @@ def download_image_batch(
     return results
 
 
+def probe_slide_exists(session, document_code, slide_num, full_path=None):
+    """Quietly check if a slide exists by verifying image size (no console output).
+
+    DocSend returns imageUrl even for non-existent slides, but those URLs return
+    tiny placeholder images (~111 bytes). Real slides are typically > 10KB.
+    """
+    if full_path:
+        page_url = f"{full_path}/page_data/{slide_num}"
+    else:
+        page_url = f"https://docsend.com/view/{document_code}/page_data/{slide_num}"
+
+    try:
+        resp = session.get(page_url, headers={"Accept": "application/json"}, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            image_url = data.get("imageUrl")
+
+            if not image_url:
+                logger.debug(f"Probe slide {slide_num}: no imageUrl")
+                return False
+
+            # Download the image and check its size
+            # Placeholder images are ~111 bytes, real slides are > 10KB
+            img_resp = session.get(image_url, timeout=15)
+            img_size = len(img_resp.content)
+
+            # Real slide images are typically > 10KB
+            is_real_slide = img_size > 1000
+            logger.debug(f"Probe slide {slide_num}: imageSize={img_size}, isReal={is_real_slide}")
+            return is_real_slide
+
+        elif resp.status_code == 404:
+            logger.debug(f"Probe slide {slide_num}: status=404")
+            return False
+        else:
+            logger.debug(f"Probe slide {slide_num}: status={resp.status_code}")
+    except Exception as e:
+        logger.debug(f"Probe slide {slide_num}: error={e}")
+    return False
+
+
+def extract_slide_count_from_html(session, url):
+    """Try to extract slide count from the document HTML page.
+
+    DocSend pages contain "X PAGES" text that we can parse.
+    Returns slide count or None if not found.
+    """
+    try:
+        resp = session.get(url, timeout=15)
+        if resp.status_code == 200:
+            # Look for "X PAGES" pattern in HTML
+            match = re.search(r'(\d+)\s*PAGES?', resp.text, re.IGNORECASE)
+            if match:
+                count = int(match.group(1))
+                logger.debug(f"Extracted slide count from HTML: {count}")
+                return count
+    except Exception as e:
+        logger.debug(f"Failed to extract slide count from HTML: {e}")
+    return None
+
+
 def detect_slide_count_auto(session, document_code, full_path=None):
-    """Automatically detect slide count without user interaction."""
+    """Automatically detect slide count (tries HTML first, falls back to binary search)."""
     console.print("\n[bold yellow]Auto-detecting slide count...[/bold yellow]\n")
     logger.info(
         f"Starting automatic slide count detection for document: {document_code}"
     )
 
-    all_hashes = {}
-    batch_size = 8
-    last_valid_slide = 0
+    # Step 1: Try to get slide count from HTML (fast path)
+    url = full_path if full_path else f"https://docsend.com/view/{document_code}"
+    html_count = extract_slide_count_from_html(session, url)
+    if html_count:
+        console.print(f"[green]✓ Found {html_count} slides from page metadata[/green]\n")
+        return html_count
 
-    # First, check single slides to handle small documents
-    console.print("[cyan]Checking first few slides individually...[/cyan]")
-    for i in range(1, 6):
-        results = download_image_batch(session, document_code, i, 1, full_path)
-        if results:
-            last_valid_slide = i
-            for idx, (img_hash, size, content) in results.items():
-                # Check for duplicates
-                for prev_idx, (prev_hash, prev_size) in all_hashes.items():
-                    if prev_hash == img_hash and idx > prev_idx:
-                        logger.info(
-                            f"Found duplicate: slide {idx} matches slide {prev_idx}"
-                        )
-                        console.print(
-                            f"\n[bold green]✓ Found duplicate: slide {idx} matches slide {prev_idx}[/bold green]"
-                        )
-                        console.print(
-                            f"[bold green]Document has {prev_idx} slides[/bold green]\n"
-                        )
-                        return prev_idx
-                all_hashes[idx] = (img_hash, size)
+    # Step 2: Fall back to probing - check slide 1 exists (authentication test)
+    console.print("[cyan]Checking document access...[/cyan]")
+    if not probe_slide_exists(session, document_code, 1, full_path):
+        console.print("[red]Cannot access slide 1 - authentication may have failed[/red]")
+        return None
+    console.print("  ✓ Document accessible")
+
+    # Step 3: Find upper bound using exponential probing
+    # Probe at 8, 16, 32, 64, 128, 256... until we find a slide that doesn't exist
+    console.print("[cyan]Finding document length...[/cyan]")
+
+    lower_bound = 1  # We know slide 1 exists
+    upper_bound = None
+
+    probe_points = [8, 16, 32, 64, 128, 256, 512]
+    for probe in probe_points:
+        if probe_slide_exists(session, document_code, probe, full_path):
+            lower_bound = probe
+            console.print(f"  ✓ Slide {probe} exists")
         else:
-            # No valid slide at position i
-            if i == 1:
-                console.print(
-                    "[red]Cannot access slide 1 - authentication may have failed[/red]"
-                )
-                return None
-            else:
-                logger.info(
-                    f"No valid slide at position {i}, document has {i - 1} slides"
-                )
-                console.print(
-                    f"\n[bold green]✓ No valid slide at position {i}[/bold green]"
-                )
-                console.print(f"[bold green]Document has {i - 1} slides[/bold green]\n")
-                return i - 1
+            upper_bound = probe
+            console.print(f"  ✗ Slide {probe} doesn't exist")
+            break
 
-    # For larger documents, use batch mode
-    console.print(
-        "\n[cyan]Document has more than 5 slides, switching to batch mode...[/cyan]"
-    )
+    if upper_bound is None:
+        # Document has more than 512 slides, keep probing
+        upper_bound = 1024
+        while probe_slide_exists(session, document_code, upper_bound, full_path):
+            lower_bound = upper_bound
+            upper_bound *= 2
+            if upper_bound > 10000:  # Safety limit
+                break
 
-    for batch_num in range(1, 20):  # Check up to 160 slides
-        start_idx = 5 + (batch_num - 1) * batch_size + 1
-        console.print(f"\n[bold]Batch {batch_num}:[/bold]")
-        batch_results = download_image_batch(
-            session, document_code, start_idx, batch_size, full_path
-        )
+    # Step 3: Binary search between lower_bound and upper_bound
+    console.print(f"[cyan]Binary search between {lower_bound} and {upper_bound}...[/cyan]")
 
-        if not batch_results:
-            # Empty batch - we've reached the end
-            console.print(
-                f"\n[bold green]✓ Empty batch - document ends at slide {last_valid_slide}[/bold green]\n"
-            )
-            return last_valid_slide
+    while upper_bound - lower_bound > 1:
+        mid = (lower_bound + upper_bound) // 2
+        if probe_slide_exists(session, document_code, mid, full_path):
+            lower_bound = mid
+        else:
+            upper_bound = mid
 
-        # Update last valid slide
-        if batch_results:
-            last_valid_slide = max(batch_results.keys())
+    slide_count = lower_bound
+    console.print(f"\n[bold green]✓ Document has {slide_count} slides[/bold green]\n")
 
-        # If batch is partially empty, we might be at the end
-        if len(batch_results) < batch_size:
-            console.print(
-                f"\n[yellow]Batch returned only {len(batch_results)} slides (expected {batch_size})[/yellow]"
-            )
-
-            # Check if the missing slides are at the end
-            missing_at_end = True
-            for i in range(start_idx, start_idx + batch_size):
-                if i <= last_valid_slide and i not in batch_results:
-                    missing_at_end = False
-                    break
-
-            if missing_at_end:
-                console.print(
-                    f"[bold green]✓ Reached end of document at slide {last_valid_slide}[/bold green]\n"
-                )
-                return last_valid_slide
-
-        # Check for duplicates
-        for idx, (img_hash, size, content) in batch_results.items():
-            for prev_idx, (prev_hash, prev_size) in all_hashes.items():
-                if prev_hash == img_hash and size == prev_size and idx > prev_idx + 2:
-                    console.print(
-                        f"\n[bold green]✓ Found duplicate: slide {idx} matches slide {prev_idx}[/bold green]"
-                    )
-                    console.print(
-                        f"[bold green]Document has {prev_idx} slides[/bold green]\n"
-                    )
-                    return prev_idx
-
-            all_hashes[idx] = (img_hash, size)
-
-    # If we've checked many slides without finding the end
-    console.print(
-        f"\n[yellow]Checked {last_valid_slide} slides without finding document end[/yellow]"
-    )
-    console.print(
-        f"[bold green]Using last valid slide: {last_valid_slide}[/bold green]\n"
-    )
-    return last_valid_slide
+    return slide_count
 
 
 def download_all_slides_parallel(
@@ -1096,40 +1253,57 @@ def download_all_slides_parallel(
         f"\n[bold]Downloading all {slide_count} slides in parallel (workers: {max_workers})...[/bold]\n"
     )
 
-    def download_slide(slide_num):
-        """Download a single slide."""
-        try:
-            # Use full path if provided (for folder-based URLs)
-            if full_path:
-                page_url = f"{full_path}/page_data/{slide_num}"
-            else:
-                page_url = (
-                    f"https://docsend.com/view/{document_code}/page_data/{slide_num}"
+    def download_slide(slide_num, retries=3):
+        """Download a single slide with retry logic."""
+        import time as time_module
+        last_error = None
+
+        for attempt in range(retries):
+            try:
+                # Use full path if provided (for folder-based URLs)
+                if full_path:
+                    page_url = f"{full_path}/page_data/{slide_num}"
+                else:
+                    page_url = (
+                        f"https://docsend.com/view/{document_code}/page_data/{slide_num}"
+                    )
+                resp = session.get(
+                    page_url, headers={"Accept": "application/json"}, timeout=15
                 )
-            resp = session.get(
-                page_url, headers={"Accept": "application/json"}, timeout=10
-            )
 
-            if resp.status_code == 200:
-                data = resp.json()
-                image_url = data.get("imageUrl")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    image_url = data.get("imageUrl")
 
-                if image_url:
-                    img_resp = session.get(image_url, timeout=30)
+                    if image_url:
+                        img_resp = session.get(image_url, timeout=30)
 
-                    if img_resp.status_code == 200:
-                        filename = f"slide_{slide_num:03d}.png"
-                        filepath = output_dir / filename
+                        if img_resp.status_code == 200:
+                            filename = f"slide_{slide_num:03d}.png"
+                            filepath = output_dir / filename
 
-                        with open(filepath, "wb") as f:
-                            f.write(img_resp.content)
+                            with open(filepath, "wb") as f:
+                                f.write(img_resp.content)
 
-                        return slide_num, True, None
+                            return slide_num, True, None
+                        else:
+                            last_error = f"Image HTTP {img_resp.status_code}"
+                    else:
+                        last_error = "No imageUrl in response"
+                elif resp.status_code == 404:
+                    # Slide doesn't exist - don't retry
+                    return slide_num, False, "Slide not found (404)"
+                else:
+                    last_error = f"API HTTP {resp.status_code}"
 
-        except Exception as e:
-            return slide_num, False, str(e)
+            except Exception as e:
+                last_error = str(e)
 
-        return slide_num, False, "Failed to download"
+            # Wait before retry (exponential backoff)
+            if attempt < retries - 1:
+                time_module.sleep(0.5 * (attempt + 1))
+
+        return slide_num, False, last_error or "Failed after retries"
 
     successful = 0
     failed = []
@@ -1163,16 +1337,184 @@ def download_all_slides_parallel(
 
                 progress.update(download_task, advance=1)
 
-    console.print(f"\n✓ Downloaded {successful}/{slide_count} slides")
+    # Validate downloaded files on disk
+    actual_files = list(output_dir.glob("slide_*.png"))
+
+    console.print(f"\n[bold]Download summary:[/bold]")
+    console.print(f"   Expected: {slide_count} slides")
+    console.print(f"   Downloaded: {successful} slides")
+    console.print(f"   Files on disk: {len(actual_files)} PNG files")
 
     if failed:
-        console.print(f"✗ Failed: {len(failed)} slides")
-        for slide, error in failed[:5]:
-            console.print(f"  - Slide {slide}: {error}")
-        if len(failed) > 5:
-            console.print(f"  ... and {len(failed) - 5} more")
+        # Separate 404s (slide doesn't exist) from real failures
+        not_found = [(s, e) for s, e in failed if "404" in str(e) or "not found" in str(e).lower()]
+        real_failures = [(s, e) for s, e in failed if (s, e) not in not_found]
 
-    return successful
+        if not_found:
+            console.print(f"   [yellow]Not found (beyond doc end): {len(not_found)} slides[/yellow]")
+        if real_failures:
+            console.print(f"   [red]Failed downloads: {len(real_failures)} slides[/red]")
+            for slide, error in real_failures[:5]:
+                console.print(f"      - Slide {slide}: {error}")
+            if len(real_failures) > 5:
+                console.print(f"      ... and {len(real_failures) - 5} more")
+
+    # Return actual files on disk (most accurate count)
+    return len(actual_files)
+
+
+def download_dropbox_embedded_document(url, output_dir, browser_name="brave"):
+    """Download a Dropbox-embedded document (e.g., Excel spreadsheet) via screenshots.
+
+    Some DocSend documents are embedded Excel/spreadsheet files rendered via Dropbox's
+    preview service. These don't have traditional slides accessible via the API.
+    Instead, we capture screenshots of each spreadsheet tab.
+
+    Args:
+        url: The DocSend document URL
+        output_dir: Directory to save slide screenshots
+        browser_name: Browser to load cookies from
+
+    Returns:
+        Number of slides captured, or None if not a Dropbox-embedded document
+    """
+    console.print("\n[cyan]Checking if document is Dropbox-embedded (spreadsheet)...[/cyan]")
+
+    import time
+
+    # Load cookies
+    browser_funcs = {
+        "brave": browser_cookie3.brave,
+        "chrome": browser_cookie3.chrome,
+        "firefox": browser_cookie3.firefox,
+        "safari": browser_cookie3.safari,
+        "edge": browser_cookie3.edge,
+        "chromium": browser_cookie3.chromium,
+    }
+
+    if browser_name.lower() not in browser_funcs:
+        return None
+
+    cj = browser_funcs[browser_name.lower()](domain_name="docsend.com")
+    cookies = []
+    for c in cj:
+        cookie = {
+            "name": c.name,
+            "value": c.value,
+            "domain": c.domain if c.domain else ".docsend.com",
+            "path": c.path if c.path else "/",
+        }
+        if c.expires:
+            cookie["expires"] = int(c.expires)
+        if c.secure:
+            cookie["secure"] = bool(c.secure)
+        cookies.append(cookie)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            viewport={"width": 1920, "height": 1200},
+        )
+        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
+        context.add_cookies(cookies)
+
+        page = context.new_page()
+        page.set_default_timeout(60000)
+
+        page.goto(url, wait_until="networkidle", timeout=60000)
+        time.sleep(3)
+
+        # Check for Dropbox iframe
+        iframes = page.query_selector_all('iframe')
+        dropbox_iframe = None
+        for iframe in iframes:
+            src = iframe.get_attribute('src') or ''
+            if 'dropboxusercontent.com' in src:
+                dropbox_iframe = iframe
+                break
+
+        if not dropbox_iframe:
+            console.print("[dim]Not a Dropbox-embedded document[/dim]")
+            browser.close()
+            return None
+
+        console.print("[green]✓ Detected Dropbox-embedded spreadsheet[/green]")
+
+        frame = dropbox_iframe.content_frame()
+        if not frame:
+            console.print("[red]Could not access Dropbox iframe content[/red]")
+            browser.close()
+            return None
+
+        # Wait for content to render
+        time.sleep(2)
+
+        # Find spreadsheet tabs (links with # href inside the iframe)
+        # Only include visible tabs with meaningful names
+        links = frame.query_selector_all('a')
+        tab_links = []
+        seen_names = set()  # Avoid duplicate tab names like [1], [2]
+        for link in links:
+            href = link.get_attribute('href') or ''
+            text = link.inner_text().strip()
+            # Tabs typically have # as href and meaningful text
+            # Skip invisible elements and duplicates
+            if href == '#' and text and len(text) < 100:
+                # Check if element is visible
+                if not link.is_visible():
+                    continue
+                # Skip duplicate names (like [1], [2] markers)
+                if text in seen_names:
+                    continue
+                # Skip generic markers that are likely navigation arrows
+                if text in ['[1]', '[2]', '[3]', '>', '<', '...']:
+                    continue
+                seen_names.add(text)
+                tab_links.append((link, text))
+
+        if tab_links:
+            console.print(f"[cyan]Found {len(tab_links)} spreadsheet tabs[/cyan]")
+            for _, text in tab_links:
+                console.print(f"  • {text}")
+        else:
+            # Single-tab spreadsheet
+            console.print("[cyan]Single-tab spreadsheet[/cyan]")
+
+        # Capture slides
+        slides_captured = 0
+
+        if tab_links:
+            # Multi-tab: capture each tab
+            for i, (link, text) in enumerate(tab_links, start=1):
+                try:
+                    if i > 1:
+                        # Click to switch tabs (first tab is already visible)
+                        # Use short timeout to avoid hanging on invisible elements
+                        link.click(timeout=5000)
+                        time.sleep(1.5)  # Wait for tab content to load
+
+                    slide_path = output_path / f"slide_{i:03d}.png"
+                    dropbox_iframe.screenshot(path=str(slide_path))
+                    console.print(f"  ✓ Captured tab {i}: {text}")
+                    slides_captured += 1
+                except Exception as e:
+                    # Log but continue with other tabs
+                    console.print(f"  ✗ Skipped tab {i} ({text}): not clickable")
+        else:
+            # Single view - capture once
+            slide_path = output_path / "slide_001.png"
+            dropbox_iframe.screenshot(path=str(slide_path))
+            console.print("  ✓ Captured single view")
+            slides_captured = 1
+
+        browser.close()
+
+    console.print(f"\n[green]✓ Captured {slides_captured} slide(s) from Dropbox-embedded document[/green]")
+    return slides_captured
 
 
 def create_pdfs_verbose(
@@ -1271,7 +1613,7 @@ def create_pdfs_verbose(
             # Show CPU usage info
             import os
 
-            cpu_count = ocr_jobs or os.cpu_count() or 4
+            cpu_count = ocr_jobs or get_physical_cpu_count()
             console.print(
                 f"   Settings: rotate pages, deskew, optimize, {cpu_count} CPU core{'s' if cpu_count != 1 else ''}"
             )
@@ -1297,7 +1639,7 @@ def create_pdfs_verbose(
                     # Use specified number of CPU cores for OCR processing
                     import os
 
-                    cpu_count = ocr_jobs or os.cpu_count() or 4
+                    cpu_count = ocr_jobs or get_physical_cpu_count()
                     return subprocess.run(
                         [
                             "ocrmypdf",
@@ -1412,12 +1754,43 @@ def create_pdfs_verbose(
             import shutil
             shutil.copy2(ocr_path, final_path)
 
+        # Verify page count in final PDF
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(str(final_path))
+            pdf_pages = len(reader.pages)
+        except ImportError:
+            try:
+                # Fallback to pdfinfo
+                result = subprocess.run(
+                    ["pdfinfo", str(final_path)],
+                    capture_output=True,
+                    text=True,
+                )
+                for line in result.stdout.split("\n"):
+                    if line.startswith("Pages:"):
+                        pdf_pages = int(line.split(":")[1].strip())
+                        break
+                else:
+                    pdf_pages = None
+            except Exception:
+                pdf_pages = None
+        except Exception:
+            pdf_pages = None
+
         # Show final file sizes comparison
         final_size_mb = final_path.stat().st_size / (1024 * 1024)
-        console.print("\n[bold]Final file sizes:[/bold]")
-        console.print(f"  [dim]sandbox/[/dim]{pdf_path.name}: {pdf_path.stat().st_size / (1024 * 1024):.1f} MB (raw)")
-        console.print(f"  [dim]sandbox/[/dim]{ocr_path.name}: {ocr_path.stat().st_size / (1024 * 1024):.1f} MB")
-        console.print(f"  [green]{final_path.name}: {final_size_mb:.1f} MB[/green] ← final")
+        console.print("\n[bold]Final summary:[/bold]")
+        console.print(f"   Input slides: {len(slides)} PNG files")
+        if pdf_pages:
+            if pdf_pages == len(slides):
+                console.print(f"   Output pages: [green]{pdf_pages} pages ✓[/green]")
+            else:
+                console.print(f"   Output pages: [red]{pdf_pages} pages (mismatch!)[/red]")
+        console.print(f"\n[bold]File sizes:[/bold]")
+        console.print(f"   [dim]sandbox/[/dim]{pdf_path.name}: {pdf_path.stat().st_size / (1024 * 1024):.1f} MB (raw)")
+        console.print(f"   [dim]sandbox/[/dim]{ocr_path.name}: {ocr_path.stat().st_size / (1024 * 1024):.1f} MB")
+        console.print(f"   [green]{final_path.name}: {final_size_mb:.1f} MB[/green] ← final")
 
 
 def download_docsend(
@@ -1432,47 +1805,54 @@ def download_docsend(
     cookies_from_browser=None,
     output_dir=None,
     _folder_name=None,  # Internal: folder name for data room organization
+    _dataroom_title=None,  # Internal: document title from data room (skip Claude title inference)
+    dry_run=False,  # If True, only show what would be downloaded
 ):
     """Download DocSend presentation with enhanced features.
 
     Args:
         output_dir: Base output directory (default: current directory)
         _folder_name: Internal param for organizing data room downloads by folder
+        _dataroom_title: Internal param for document title from data room listing
+        dry_run: If True, only discover and show slide counts without downloading
     """
 
     logger.info(f"Starting download for URL: {url}")
 
-    session = requests.Session()
+    # Use curl_cffi with Chrome impersonation to avoid TLS fingerprint detection
+    session = curl_requests.Session(impersonate="chrome")
+    logger.info("Using curl_cffi with Chrome impersonation (stealth mode)")
+
+    # Headers for specific requests (curl_cffi's impersonate handles most headers)
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
     }
-    session.headers.update(headers)
 
-    # Load cookies from browser if specified
-    browser_cookies_loaded = False
-    if cookies_from_browser:
-        cookies = load_cookies_from_browser(cookies_from_browser)
-        if cookies:
-            for name, value in cookies.items():
-                session.cookies.set(name, value)
-            browser_cookies_loaded = True
+    # Default browser for cookie loading (can be overridden with --cookies-from-browser)
+    if not cookies_from_browser:
+        cookies_from_browser = "brave"
 
     # Check if this is a data room URL (/view/s/xxx) - needs special handling
     parsed_check = urlparse(url)
     path_check = parsed_check.path.strip("/").split("/")
-    is_dataroom = "view" in path_check and "s" in path_check and "/d/" not in url
+    is_dataroom_listing = "view" in path_check and "s" in path_check and "/d/" not in url
+    is_dataroom_document = "view" in path_check and "s" in path_check and "/d/" in url
 
-    if is_dataroom:
-        if not cookies_from_browser:
-            console.print("[red]Data room URLs require --cookies-from-browser[/red]")
-            console.print("[yellow]First authenticate in your browser, then run:[/yellow]")
-            console.print(f"[yellow]  docsend-dl.py '{url}' --cookies-from-browser brave[/yellow]")
+    if is_dataroom_listing:
+        # Data rooms always need browser cookies
+        console.print("\n[bold cyan]📂 Data room detected[/bold cyan]")
+        console.print(f"   Using browser: [cyan]{cookies_from_browser}[/cyan]")
+
+        cookies = load_cookies_from_browser(cookies_from_browser)
+        if not cookies:
+            console.print(f"   [red]✗ No cookies found for docsend.com in {cookies_from_browser}[/red]")
+            console.print(f"   [yellow]Please authenticate in {cookies_from_browser} first, then retry[/yellow]")
             return None
+
+        for name, value in cookies.items():
+            session.cookies.set(name, value, domain=".docsend.com")
+        console.print(f"   [green]✓ Cookies loaded - proceeding with download[/green]")
 
         # Discover all documents in the data room
         documents = discover_dataroom_documents(url, cookies_from_browser)
@@ -1484,6 +1864,34 @@ def download_docsend(
         # Download each document
         console.print(f"\n[bold cyan]Downloading {len(documents)} document(s) from data room...[/bold cyan]")
 
+        if dry_run:
+            # Dry run mode: show documents and probe slide counts without downloading
+            console.print(f"\n[bold yellow]DRY RUN: Probing {len(documents)} document(s)[/bold yellow]\n")
+
+            current_folder = None
+            for i, (doc_name, doc_url, folder_name) in enumerate(documents, 1):
+                # Print folder header when it changes
+                if folder_name != current_folder:
+                    current_folder = folder_name
+                    console.print(f"\n[bold cyan]📁 {folder_name}[/bold cyan]")
+
+                # Try to get slide count from HTML
+                try:
+                    temp_session = curl_requests.Session(impersonate="chrome")
+                    for name, value in cookies.items():
+                        temp_session.cookies.set(name, value, domain=".docsend.com")
+                    resp = temp_session.get(doc_url, timeout=15)
+                    match = re.search(r'(\d+)\s*PAGES?', resp.text, re.IGNORECASE)
+                    pages = match.group(1) if match else "?"
+                except:
+                    pages = "?"
+
+                console.print(f"   {i:2d}. [green]{doc_name}[/green] ({pages} pages)")
+                console.print(f"       [dim]{doc_url}[/dim]")
+
+            console.print(f"\n[bold yellow]DRY RUN complete - no files downloaded[/bold yellow]")
+            return None
+
         # Use provided output_dir or current directory
         base_output_dir = Path(output_dir) if output_dir else Path(".")
         base_output_dir.mkdir(parents=True, exist_ok=True)
@@ -1494,7 +1902,7 @@ def download_docsend(
             console.print(f"[dim]Folder: {folder_name}[/dim]")
             console.print(f"{'='*60}")
 
-            # Recursively download this document
+            # Recursively download this document, passing the title from the data room
             download_docsend(
                 doc_url,
                 email=email,
@@ -1507,11 +1915,27 @@ def download_docsend(
                 cookies_from_browser=cookies_from_browser,
                 output_dir=str(base_output_dir),
                 _folder_name=folder_name,
+                _dataroom_title=doc_name,  # Use title from data room listing
             )
 
         console.print(f"\n[bold green]✓ Completed downloading {len(documents)} document(s) from data room[/bold green]")
         console.print(f"[bold]Output directory: {base_output_dir.absolute()}[/bold]")
         return None
+
+    # Handle single document from a data room - needs browser cookies loaded first
+    if is_dataroom_document:
+        console.print("\n[bold cyan]📄 Data room document detected[/bold cyan]")
+        console.print(f"   Using browser: [cyan]{cookies_from_browser}[/cyan]")
+
+        cookies = load_cookies_from_browser(cookies_from_browser)
+        if not cookies:
+            console.print(f"   [red]✗ No cookies found for docsend.com in {cookies_from_browser}[/red]")
+            console.print(f"   [yellow]Please authenticate in {cookies_from_browser} first, then retry[/yellow]")
+            return None
+
+        for name, value in cookies.items():
+            session.cookies.set(name, value, domain=".docsend.com")
+        console.print(f"   [green]✓ Cookies loaded[/green]")
 
     # First, follow any redirects to get the actual document URL
     logger.info("Following redirects to resolve actual document URL...")
@@ -1528,6 +1952,11 @@ def download_docsend(
         logger.error(f"Error resolving URL: {e}")
         console.print(f"[red]Error resolving URL: {e}[/red]")
         return None
+
+    # Try to extract document title from HTML <title> tag
+    html_page_title = extract_title_from_html(initial_response.text)
+    if html_page_title:
+        logger.debug(f"Extracted title from page HTML: {html_page_title}")
 
     # Extract document code from the resolved URL
     parsed_url = urlparse(url)
@@ -1548,15 +1977,27 @@ def download_docsend(
 
             # Check for /view/s/xxx pattern (space/shared URL)
             if next_part == "s" and len(path_parts) > view_index + 2:
-                # Space URL: /view/s/DOCUMENT
-                document_code = path_parts[view_index + 2]
-                # Store the full path for API calls
-                full_doc_path = (
-                    f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
-                )
-                logger.debug(
-                    f"Space URL detected. Document: {document_code}, Full path: {full_doc_path}"
-                )
+                # Check for /view/s/DATAROOM/d/DOCUMENT pattern
+                if len(path_parts) > view_index + 4 and path_parts[view_index + 3] == "d":
+                    # Data room with specific document: /view/s/DATAROOM/d/DOCUMENT
+                    dataroom_code = path_parts[view_index + 2]
+                    document_code = path_parts[view_index + 4]
+                    full_doc_path = (
+                        f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
+                    )
+                    logger.debug(
+                        f"Data room document URL. Dataroom: {dataroom_code}, Document: {document_code}, Full path: {full_doc_path}"
+                    )
+                else:
+                    # Simple space URL: /view/s/DOCUMENT
+                    document_code = path_parts[view_index + 2]
+                    # Store the full path for API calls
+                    full_doc_path = (
+                        f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
+                    )
+                    logger.debug(
+                        f"Space URL detected. Document: {document_code}, Full path: {full_doc_path}"
+                    )
             # Check if this is a folder URL with /d/ subdocument
             elif len(path_parts) > view_index + 2 and path_parts[view_index + 2] == "d":
                 # Folder URL: /view/FOLDER/d/DOCUMENT
@@ -1599,231 +2040,118 @@ def download_docsend(
     console.print(f"Document Code: {document_code}")
     console.print(f"Parallel workers: {max_workers}")
 
-    # Initial request and authentication
-    console.print("\n[bold]Checking authentication requirements...[/bold]")
-    logger.info("Checking if authentication is required...")
-    response = session.get(url)
-    logger.debug(f"Initial response status: {response.status_code}")
+    # Progressive authentication for regular documents:
+    # 1. Try public access (no auth)
+    # 2. Try platypus email (no passcode)
+    # 3. Try browser cookies
+    # 4. Ask user for passcode or to login via browser
 
+    console.print("\n[bold]Checking access...[/bold]")
     authenticated_email = None
 
-    # Check for bot detection
-    if "appear to be a bot" in response.text.lower():
-        console.print("[red]DocSend blocked request as bot[/red]")
-        console.print("[yellow]This may be a newer DocSend page requiring browser automation[/yellow]")
-        return None
-
-    # Check for JavaScript SPA (newer DocSend) - no traditional form, but auth still needed
-    # Skip this check if we already loaded browser cookies (assume authenticated)
-    is_spa = "window.ENV" in response.text and "link_auth_form" not in response.text
-    if is_spa and not browser_cookies_loaded:
-        # SPA pages need special handling - try API directly to check if auth needed
+    # Helper to test if we can access the document
+    def can_access_document():
         test_url = f"{full_doc_path}/page_data/1" if full_doc_path else f"https://docsend.com/view/{document_code}/page_data/1"
-        test_resp = session.get(test_url, headers={"Accept": "application/json"})
-        if test_resp.status_code == 404:
-            console.print("[yellow]JavaScript SPA detected - requires browser authentication[/yellow]")
-
-            if not passcode:
-                console.print("\n[red]This document likely requires a passcode.[/red]")
-                console.print("[yellow]Run again with: --passcode YOUR_PASSCODE[/yellow]")
-                return None
-
-            # Use Playwright for browser-based auth
-            privacy_email = "platypus@gmail.com"
-            auth_email = email if email else privacy_email
-
-            cookies, final_url = authenticate_spa_with_playwright(url, auth_email, passcode)
-            if cookies:
-                # Transfer cookies to requests session
-                for name, value in cookies.items():
-                    session.cookies.set(name, value)
-                authenticated_email = auth_email
-
-                # If URL changed (e.g., space -> document), re-parse it
-                if final_url and final_url != url:
-                    url = final_url
-                    parsed_url = urlparse(url)
-                    clean_path = parsed_url.path.strip("/")
-                    path_parts = clean_path.split("/")
-
-                    # Re-extract document code from new URL
-                    if "view" in path_parts:
-                        view_index = path_parts.index("view")
-                        if view_index + 1 < len(path_parts):
-                            next_part = path_parts[view_index + 1]
-                            if next_part == "s" and len(path_parts) > view_index + 2:
-                                document_code = path_parts[view_index + 2]
-                            elif len(path_parts) > view_index + 2 and path_parts[view_index + 2] == "d":
-                                document_code = path_parts[view_index + 3] if len(path_parts) > view_index + 3 else path_parts[view_index + 1]
-                                full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
-                            else:
-                                document_code = path_parts[view_index + 1]
-                    console.print(f"   Updated document code: [cyan]{document_code}[/cyan]")
-
-                # Build new test URL with updated path
-                test_url = f"{full_doc_path}/page_data/1" if full_doc_path else f"https://docsend.com/view/{document_code}/page_data/1"
-
-                # Verify auth worked
-                test_resp = session.get(test_url, headers={"Accept": "application/json"})
-                if test_resp.status_code == 200:
-                    try:
-                        data = test_resp.json()
-                        if "imageUrl" in data:
-                            console.print(f"\n[bold green]📧 Successfully authenticated with: {authenticated_email}[/bold green]")
-                        else:
-                            console.print("[red]Authentication failed - no image data[/red]")
-                            return None
-                    except Exception:
-                        console.print("[red]Authentication failed - invalid response[/red]")
-                        return None
-                else:
-                    console.print(f"[red]Authentication failed - API returned {test_resp.status_code}[/red]")
-                    return None
-            else:
-                console.print("[red]Browser authentication failed[/red]")
-                return None
-
-    # If browser cookies loaded, verify they work before trying other auth
-    if browser_cookies_loaded:
-        test_api_url = f"{full_doc_path}/page_data/1" if full_doc_path else f"https://docsend.com/view/{document_code}/page_data/1"
-        test_resp = session.get(test_api_url, headers={"Accept": "application/json"})
-        if test_resp.status_code == 200:
-            try:
+        try:
+            test_resp = session.get(test_url, headers={"Accept": "application/json"}, timeout=10)
+            if test_resp.status_code == 200:
                 data = test_resp.json()
-                if "imageUrl" in data:
-                    console.print("[green]✓ Authenticated via browser cookies[/green]")
-                    authenticated_email = "(browser cookies)"
-                    # Skip auth flow
-                else:
-                    console.print("[yellow]Cookie auth response incomplete, trying Playwright...[/yellow]")
-                    browser_cookies_loaded = False
-            except Exception:
-                console.print("[yellow]Cookie auth failed, trying Playwright...[/yellow]")
-                browser_cookies_loaded = False
+                return "imageUrl" in data
+        except Exception:
+            pass
+        return False
+
+    # For data room documents, cookies are already loaded - just check access
+    if is_dataroom_document:
+        if can_access_document():
+            authenticated_email = f"({cookies_from_browser} cookies)"
+            console.print(f"   [green]✓ Authenticated via {cookies_from_browser} cookies[/green]")
         else:
-            console.print(f"[yellow]Cookie API check failed (status: {test_resp.status_code}), trying Playwright...[/yellow]")
-            # The requests library may be blocked by CloudFront WAF
-            # Try Playwright with the browser cookies + passcode if provided
-            if PLAYWRIGHT_AVAILABLE and passcode:
-                console.print("[cyan]Using Playwright to complete authentication...[/cyan]")
+            console.print(f"   [red]✗ Browser cookies didn't work[/red]")
+            console.print(f"   [yellow]Please visit the data room in {cookies_from_browser} to refresh your session[/yellow]")
+            return None
+    # Step 1: Try direct access (public document)
+    elif can_access_document():
+        console.print("   [green]✓ Document is public - no authentication needed[/green]")
+    else:
+        # Step 2: Try platypus email (with passcode if provided)
+        console.print("   [yellow]✗ Not public[/yellow]")
+        console.print("   Trying platypus email...")
+
+        privacy_email = "platypus@gmail.com"
+        # Use provided passcode if available, otherwise try without
+        auth_passcode = passcode if passcode else ""
+        if authenticate_with_email(session, url, privacy_email, auth_passcode, headers):
+            if can_access_document():
+                authenticated_email = privacy_email
+                console.print(f"   [green]✓ Authenticated with {privacy_email}[/green]")
+
+        if not authenticated_email:
+            # Step 3: Try browser cookies
+            console.print(f"   [yellow]✗ Email auth failed[/yellow]")
+            console.print(f"   Trying {cookies_from_browser} cookies...")
+
+            browser_cookies = load_cookies_from_browser(cookies_from_browser)
+            if browser_cookies:
+                for name, value in browser_cookies.items():
+                    session.cookies.set(name, value, domain=".docsend.com")
+
+                if can_access_document():
+                    authenticated_email = f"({cookies_from_browser} cookies)"
+                    console.print(f"   [green]✓ Authenticated via {cookies_from_browser} cookies[/green]")
+
+        if not authenticated_email:
+            # Step 4: Try Playwright with browser cookies + passcode if provided
+            console.print(f"   [yellow]✗ Browser cookies insufficient[/yellow]")
+
+            if passcode:
+                console.print(f"   Trying Playwright with passcode...")
                 pw_cookies, final_url = authenticate_with_playwright_and_cookies(
                     url, cookies_from_browser, passcode, email
                 )
                 if pw_cookies is None and final_url is None:
-                    # Email verification required - message already shown, exit
+                    # Email verification required - message already shown
                     return None
                 if pw_cookies:
-                    # Transfer Playwright cookies to requests session
                     for name, value in pw_cookies.items():
-                        session.cookies.set(name, value)
-                    authenticated_email = email if email else "(browser session)"
+                        session.cookies.set(name, value, domain=".docsend.com")
 
-                    # Update URL if redirected
-                    if final_url and final_url != url:
-                        url = final_url
-                        # Re-parse URL components
-                        parsed_url = urlparse(url)
-                        clean_path = parsed_url.path.strip("/")
-                        path_parts = clean_path.split("/")
-                        if "view" in path_parts:
-                            view_index = path_parts.index("view")
-                            if view_index + 1 < len(path_parts):
-                                next_part = path_parts[view_index + 1]
-                                if next_part == "s" and len(path_parts) > view_index + 2:
-                                    document_code = path_parts[view_index + 2]
-                                    full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
-                                elif len(path_parts) > view_index + 2 and path_parts[view_index + 2] == "d":
-                                    document_code = path_parts[view_index + 3] if len(path_parts) > view_index + 3 else path_parts[view_index + 1]
-                                    full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
-                                else:
-                                    document_code = path_parts[view_index + 1]
+                    if can_access_document():
+                        authenticated_email = email if email else f"({cookies_from_browser} + passcode)"
+                        console.print(f"   [green]✓ Authenticated via Playwright[/green]")
 
-                    # Verify auth worked
-                    test_api_url = f"{full_doc_path}/page_data/1" if full_doc_path else f"https://docsend.com/view/{document_code}/page_data/1"
-                    test_resp = session.get(test_api_url, headers={"Accept": "application/json"})
-                    if test_resp.status_code == 200:
-                        try:
-                            data = test_resp.json()
-                            if "imageUrl" in data:
-                                console.print("[green]✓ Authenticated via Playwright[/green]")
-                                browser_cookies_loaded = True  # Mark as authenticated
-                            else:
-                                browser_cookies_loaded = False
-                        except Exception:
-                            browser_cookies_loaded = False
-                    else:
-                        browser_cookies_loaded = False
-                else:
-                    browser_cookies_loaded = False
-            else:
-                browser_cookies_loaded = False
+                        # Update URL if redirected
+                        if final_url and final_url != url:
+                            url = final_url
+                            parsed_url = urlparse(url)
+                            clean_path = parsed_url.path.strip("/")
+                            path_parts = clean_path.split("/")
+                            if "view" in path_parts:
+                                view_index = path_parts.index("view")
+                                if view_index + 1 < len(path_parts):
+                                    next_part = path_parts[view_index + 1]
+                                    if next_part == "s" and len(path_parts) > view_index + 2:
+                                        document_code = path_parts[view_index + 2]
+                                        full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
+                                    elif len(path_parts) > view_index + 2 and path_parts[view_index + 2] == "d":
+                                        document_code = path_parts[view_index + 3] if len(path_parts) > view_index + 3 else path_parts[view_index + 1]
+                                        full_doc_path = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts)}"
+                                    else:
+                                        document_code = path_parts[view_index + 1]
 
-    if "link_auth_form" in response.text and not browser_cookies_loaded:
-        console.print("[yellow]Authentication required[/yellow]")
-
-        # Detect what fields are required
-        auth_reqs = detect_auth_requirements(response.text)
-        logger.debug(f"Auth requirements detected: {auth_reqs}")
-
-        if auth_reqs["email_required"]:
-            console.print("  • Email: [cyan]required[/cyan]")
-        if auth_reqs["passcode_required"]:
-            console.print("  • Passcode: [cyan]required[/cyan]")
-
-        # Check if passcode is required but not provided
-        if auth_reqs["passcode_required"] and not passcode:
-            console.print("\n[red]This document requires a passcode.[/red]")
-            console.print("[yellow]Run again with: --passcode YOUR_PASSCODE[/yellow]")
+        if not authenticated_email and not can_access_document():
+            # All fallbacks failed
+            console.print("\n[red]✗ Could not access document[/red]")
+            console.print("[yellow]Try one of:[/yellow]")
+            console.print(f"   1. Login to docsend.com in {cookies_from_browser} and retry")
+            console.print("   2. Run with --passcode YOUR_PASSCODE")
+            console.print("   3. Run with --cookies-from-browser <browser>")
             return None
-
-        # Try privacy email first
-        privacy_email = "platypus@gmail.com"
-        console.print("\n[bold]Attempting privacy-preserving authentication...[/bold]")
-
-        if authenticate_with_email(session, url, privacy_email, passcode, headers):
-            authenticated_email = privacy_email
-        else:
-            # Privacy email failed, try user email if provided
-            if email:
-                console.print(
-                    "\n[bold]Privacy email failed, trying user-provided email...[/bold]"
-                )
-
-                if authenticate_with_email(session, url, email, passcode, headers):
-                    authenticated_email = email
-                else:
-                    console.print("\n[red]Authentication failed with both emails[/red]")
-                    console.print("[red]Unable to access document[/red]")
-                    return None
-            else:
-                console.print(
-                    "\n[red]Privacy email failed and no user email provided[/red]"
-                )
-                console.print(
-                    "[yellow]Try running again with --email YOUR_EMAIL[/yellow]"
-                )
-                return None
-    else:
-        console.print(
-            "[green]✓ No authentication required - document is public[/green]"
-        )
 
     if authenticated_email:
-        console.print(
-            f"\n[bold green]📧 Successfully authenticated with: {authenticated_email}[/bold green]"
-        )
+        console.print(f"\n[bold green]📧 Authenticated as: {authenticated_email}[/bold green]")
 
-    # Auto-detect slide count
-    if not slide_count:
-        detected = detect_slide_count_auto(session, document_code, full_doc_path)
-
-        if not detected:
-            console.print("[red]Failed to detect slide count[/red]")
-            return None
-
-        slide_count = detected
-
-    # Create output directory structure
+    # Create output directory structure first (needed for both normal and fallback paths)
     # Final PDF goes to: output_dir/[folder_name]/ or output_dir/ for root
     # Sandbox files go to: output_dir/0__sandbox/{document_code}/
     base_output_dir = Path(output_dir) if output_dir else Path(".")
@@ -1841,21 +2169,77 @@ def download_docsend(
     sandbox_base = base_output_dir / "0__sandbox" / document_code
     sandbox_base.mkdir(parents=True, exist_ok=True)
 
-    # Download all slides in parallel (to sandbox)
-    successful = download_all_slides_parallel(
-        session, document_code, slide_count, sandbox_base, max_workers, full_doc_path
-    )
+    # Auto-detect slide count
+    is_dropbox_embedded = False
+    if not slide_count:
+        detected = detect_slide_count_auto(session, document_code, full_doc_path)
+
+        if not detected:
+            # Normal slide detection failed - try Dropbox-embedded document fallback
+            console.print("[yellow]Standard slide detection failed, trying embedded document fallback...[/yellow]")
+
+            if cookies_from_browser:
+                dropbox_slides = download_dropbox_embedded_document(
+                    url, str(sandbox_base), cookies_from_browser
+                )
+                if dropbox_slides:
+                    slide_count = dropbox_slides
+                    is_dropbox_embedded = True
+                    console.print(f"[green]✓ Successfully captured {slide_count} slide(s) from embedded document[/green]")
+                else:
+                    console.print("[red]Failed to detect slide count (not a standard or embedded document)[/red]")
+                    return None
+            else:
+                console.print("[red]Failed to detect slide count[/red]")
+                console.print("[yellow]Try using --cookies-from-browser for embedded documents[/yellow]")
+                return None
+        else:
+            slide_count = detected
+
+    # Download all slides in parallel (to sandbox) - skip if already captured via Dropbox fallback
+    if is_dropbox_embedded:
+        successful = slide_count  # Already downloaded via Dropbox fallback
+        console.print(f"[dim]Slides already captured via embedded document handler[/dim]")
+    else:
+        successful = download_all_slides_parallel(
+            session, document_code, slide_count, sandbox_base, max_workers, full_doc_path
+        )
 
     # Extract document title and date (from sandbox)
     document_title = None
     document_date = None
-    if basic_title:
+
+    # Priority order for title extraction:
+    # 1. Data room title (most accurate, passed via _dataroom_title)
+    # 2. HTML page title (from <title> tag - simple and reliable)
+    # 3. Claude vision analysis (can extract formatted title + date from slides)
+    # 4. OCR from first slide (basic fallback)
+
+    if _dataroom_title:
+        # Title from data room listing (most accurate)
+        document_title = _dataroom_title
+        console.print(f"\n[cyan]📂 Using title from data room: [green]{document_title}[/green][/cyan]")
+        # Call Claude just for date extraction (if available)
+        if CLAUDE_AVAILABLE:
+            _, document_date = suggest_title_with_claude(
+                sandbox_base, slide_count, llm_title_pages
+            )
+    elif html_page_title:
+        # Title from HTML <title> tag (reliable for single documents)
+        document_title = html_page_title
+        console.print(f"\n[cyan]📄 Using title from page: [green]{document_title}[/green][/cyan]")
+        # Call Claude just for date extraction (if available)
+        if CLAUDE_AVAILABLE:
+            _, document_date = suggest_title_with_claude(
+                sandbox_base, slide_count, llm_title_pages
+            )
+    elif basic_title:
         # Use simple OCR-based extraction from first slide
         first_slide = sandbox_base / "slide_001.png"
         if first_slide.exists():
             document_title = extract_title_from_image(first_slide)
-    else:
-        # Use Claude to suggest title and extract date from slide images (default)
+    elif CLAUDE_AVAILABLE:
+        # Use Claude to suggest title and extract date from slide images
         document_title, document_date = suggest_title_with_claude(
             sandbox_base, slide_count, llm_title_pages
         )
@@ -1865,6 +2249,12 @@ def download_docsend(
             first_slide = sandbox_base / "slide_001.png"
             if first_slide.exists():
                 document_title = extract_title_from_image(first_slide)
+    else:
+        # Claude not available and no HTML/dataroom title - use OCR fallback
+        console.print("\n[yellow]⚠ Claude not available - using OCR for title extraction[/yellow]")
+        first_slide = sandbox_base / "slide_001.png"
+        if first_slide.exists():
+            document_title = extract_title_from_image(first_slide)
 
     # Create PDFs with verbose output (sandbox for intermediate, pdf_output_dir for final)
     if successful > 0:
@@ -1933,8 +2323,8 @@ def main():
     parser.add_argument(
         "--llm-title-pages",
         type=int,
-        default=10,
-        help="Number of pages to send to Claude for title suggestion (default: 10)",
+        default=DEFAULT_TITLE_PAGES,
+        help=f"Number of pages for OCR + Claude title extraction (default: {DEFAULT_TITLE_PAGES})",
     )
     parser.add_argument(
         "--cookies-from-browser",
@@ -1951,6 +2341,11 @@ def main():
         "--output-dir", "-o",
         default=".",
         help="Output directory (default: current dir). Final PDFs go to folder structure, intermediate files to 0__sandbox/",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be downloaded without actually downloading (discovery + slide count only)",
     )
 
     args = parser.parse_args()
@@ -1969,6 +2364,7 @@ def main():
         args.llm_title_pages,
         args.cookies_from_browser,
         args.output_dir,
+        dry_run=args.dry_run,
     )
 
 
