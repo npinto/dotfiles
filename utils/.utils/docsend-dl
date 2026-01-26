@@ -303,34 +303,21 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=DEFAULT_TITLE_P
         # Include full OCR text for accurate extraction
         ocr_hint = f" OCR text: {ocr_text}"
 
-    # Step 1: Extract title and date from slides using JSON schema for consistent output
-    # Key: Put OCR text prominently so Claude scans it for the year
+    # Step 1: Extract title and date from slides
+    # Use simple text output format for speed (JSON schema is too slow)
     prompt1 = (
         f"Analyze {files_ref} and this OCR text:\n"
         f"{ocr_hint}\n\n"
-        "Extract:\n"
-        "- title: ~30 char document title with company/topic/period (Q1/Q2/Q3/Q4), NO year numbers\n"
-        "- date: Find any year in OCR or images. Return as YYYY, YYYY-MM, or YYYY-MM-DD. Empty string if none."
+        "Look for:\n"
+        "1. Document title (company name + topic + period like Q4)\n"
+        "2. Any year mentioned (2024, 2025, 2026, October 2025, Q4 2025, etc)\n\n"
+        "Respond with EXACTLY two lines:\n"
+        "TITLE: <~30 chars, include Q4/Q1 period if shown, NO year in title>\n"
+        "DATE: <year as YYYY or YYYY-MM, e.g. 2025 or 2025-10. Say NONE only if absolutely no year visible>"
     )
 
-    # JSON schema for structured output
-    json_schema = json.dumps({
-        "type": "object",
-        "properties": {
-            "title": {
-                "type": "string",
-                "description": "~30 char title with company/topic/period, no year"
-            },
-            "date": {
-                "type": "string",
-                "description": "YYYY or YYYY-MM or YYYY-MM-DD from document, or empty string"
-            }
-        },
-        "required": ["title", "date"],
-        "additionalProperties": False
-    })
-
-    cmd = ["claude", "-p", prompt1, "--output-format", "json", "--json-schema", json_schema]
+    # Flags for non-interactive subprocess execution
+    cmd = ["claude", "-p", prompt1, "--dangerously-skip-permissions", "--no-session-persistence"]
 
     try:
         logger.debug(f"Running claude step 1 in {output_dir} with {len(slide_files)} files")
@@ -338,70 +325,38 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=DEFAULT_TITLE_P
             cmd,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=120,  # 2 min timeout for 10 slides
             cwd=str(output_dir),
+            stdin=subprocess.DEVNULL,  # Prevent waiting for input
         )
+
+        if result.returncode != 0:
+            console.print(f"   [yellow]Claude exit code: {result.returncode}[/yellow]")
+            if result.stderr:
+                console.print(f"   [yellow]Claude stderr: {result.stderr[:200]}[/yellow]")
 
         if result.returncode == 0 and result.stdout.strip():
             output = result.stdout.strip()
             logger.debug(f"Claude step 1 output: {output}")
 
-            # Parse JSON output
+            # Parse text output (TITLE: xxx\nDATE: xxx format)
             title = None
             date_str = None
 
-            try:
-                data = json.loads(output)
-                # CLI JSON output is a list of events, structured_output is in the last "result" event
-                if isinstance(data, list):
-                    # Find the result event with structured_output
-                    for event in reversed(data):
-                        if isinstance(event, dict) and "structured_output" in event:
-                            data = event["structured_output"]
-                            break
-                    else:
-                        # No structured_output found, try last event's result
-                        if data and isinstance(data[-1], dict):
-                            data = data[-1].get("result", data[-1])
-                elif isinstance(data, dict) and "result" in data:
-                    data = data["result"]
-
-                raw_title = data.get("title", "") if isinstance(data, dict) else ""
-                if raw_title:
-                    # Clean up the title for use as filename
-                    raw_title = raw_title.strip('"\'')
+            for line in output.split("\n"):
+                line = line.strip()
+                if line.upper().startswith("TITLE:"):
+                    raw_title = line[6:].strip().strip('"\'')
                     # Remove invalid filename characters
                     clean_title = re.sub(r'[<>:"/\\|?*]', "", raw_title)
                     # Collapse whitespace and underscores to spaces
-                    clean_title = clean_title.replace("_", " ")
-                    clean_title = " ".join(clean_title.split())
-                    clean_title = clean_title.strip()
+                    clean_title = " ".join(clean_title.replace("_", " ").split()).strip()
                     if clean_title:
                         title = clean_title
-
-                raw_date = data.get("date", "") if isinstance(data, dict) else ""
-                if raw_date and str(raw_date).lower() not in ("null", "none", ""):
-                    # Validate date format (YYYY, YYYY-MM, or YYYY-MM-DD)
-                    if re.match(r"^\d{4}(-\d{2}(-\d{2})?)?$", raw_date):
+                elif line.upper().startswith("DATE:"):
+                    raw_date = line[5:].strip()
+                    if raw_date.upper() != "NONE" and re.match(r"^\d{4}(-\d{2}(-\d{2})?)?$", raw_date):
                         date_str = raw_date
-                    else:
-                        logger.debug(f"Invalid date format: {raw_date}")
-
-            except json.JSONDecodeError as e:
-                logger.debug(f"Failed to parse JSON output: {e}")
-                # Fallback: try parsing as text
-                for line in output.split("\n"):
-                    line = line.strip()
-                    if line.upper().startswith("TITLE:"):
-                        raw_title = line[6:].strip().strip('"\'')
-                        clean_title = re.sub(r'[<>:"/\\|?*]', "", raw_title)
-                        clean_title = " ".join(clean_title.replace("_", " ").split()).strip()
-                        if clean_title:
-                            title = clean_title
-                    elif line.upper().startswith("DATE:"):
-                        raw_date = line[5:].strip()
-                        if raw_date.upper() != "NONE" and re.match(r"^\d{4}(-\d{2}(-\d{2})?)?$", raw_date):
-                            date_str = raw_date
 
             # Step 2: If title is too long, ask Claude to shorten it
             if title and len(title) > 40:
