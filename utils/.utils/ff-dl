@@ -2221,49 +2221,50 @@ class MediaDownloader:
             logger.error("  Try: pip install -U yt-dlp")
             return (None, None)
 
-        # Extract audio from the video
-        audio_path = self.output_dir / f"{file_basename}.m4a"
-
+        # Extract audio from the video using optimized functions
+        # (stream copy is instant for AAC, fallback to encoding with progress)
         logger.info("  🎵 Extracting audio from video...")
+
         try:
-            result = subprocess.run(
-                [
-                    "ffmpeg",
-                    "-i",
-                    str(video_path),
-                    "-vn",  # No video
-                    "-acodec",
-                    "aac",
-                    "-b:a",
-                    "192k",
-                    "-y",  # Overwrite
-                    str(audio_path),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
+            import tempfile
 
-            if result.returncode != 0:
-                logger.error(f"  ❌ Audio extraction failed: {result.stderr[:200]}")
-                # Try to find any audio file that yt-dlp might have created
-                for ext in audio_exts:
-                    candidate = self.output_dir / f"{file_basename}{ext}"
-                    if candidate.exists() and candidate != video_path:
-                        audio_path = candidate
-                        logger.info(f"  ✅ Found audio: {audio_path.name}")
-                        break
-                else:
-                    return (None, video_path)  # Return video only
+            # Get video duration for progress reporting
+            duration = _get_video_duration(video_path)
+            timestamp = int(time.time())
 
-            if audio_path and audio_path.exists():
+            # Try stream copy first (instant for AAC/MP3/Opus)
+            temp_dir = Path(tempfile.gettempdir())
+            audio_path = _try_stream_copy(video_path, self.output_dir, timestamp)
+
+            if audio_path:
+                # Rename to clean filename
+                final_audio = self.output_dir / f"{file_basename}{audio_path.suffix}"
+                if audio_path != final_audio:
+                    audio_path.rename(final_audio)
+                    audio_path = final_audio
                 logger.info(f"  ✅ Audio saved: {audio_path.name}")
                 return (audio_path, video_path)
-            else:
-                return (None, video_path)
 
-        except subprocess.TimeoutExpired:
-            logger.error("  ❌ Audio extraction timed out")
+            # Fallback: encode to MP3 with progress (handles long files properly)
+            audio_path = _encode_to_mp3(video_path, self.output_dir, timestamp, duration)
+
+            if audio_path:
+                # Rename to clean filename
+                final_audio = self.output_dir / f"{file_basename}.mp3"
+                if audio_path != final_audio:
+                    audio_path.rename(final_audio)
+                    audio_path = final_audio
+                logger.info(f"  ✅ Audio saved: {audio_path.name}")
+                return (audio_path, video_path)
+
+            # Last resort: check if yt-dlp created an audio file
+            for ext in audio_exts:
+                candidate = self.output_dir / f"{file_basename}{ext}"
+                if candidate.exists() and candidate != video_path:
+                    logger.info(f"  ✅ Found audio: {candidate.name}")
+                    return (candidate, video_path)
+
+            logger.error("  ❌ Audio extraction failed")
             return (None, video_path)
 
         except Exception as e:
