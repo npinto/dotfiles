@@ -260,6 +260,47 @@ def strip_cli_prefix_from_md(content: bytes) -> bytes:
     text = text.replace(CLI_UPLOAD_PREFIX, "")
     return text.encode("utf-8")
 
+
+def strip_cli_prefix_from_pdf(content: bytes) -> bytes:
+    """Strip FIREFLIES_CLI__ prefix from PDF content using PyMuPDF.
+
+    Attempts text replacement while preserving formatting.
+    Returns original content if PyMuPDF unavailable or replacement fails.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        logger.debug("PyMuPDF not available, skipping PDF prefix removal")
+        return content
+
+    try:
+        # Open PDF from bytes
+        doc = fitz.open(stream=content, filetype="pdf")
+        modified = False
+
+        for page in doc:
+            # Search for the prefix
+            instances = page.search_for(CLI_UPLOAD_PREFIX)
+            if instances:
+                for rect in instances:
+                    # Redact (white out) the prefix text
+                    page.add_redact_annot(rect, fill=(1, 1, 1))
+                page.apply_redactions()
+                modified = True
+
+        if modified:
+            # Save to bytes
+            result = doc.tobytes()
+            doc.close()
+            return result
+        else:
+            doc.close()
+            return content
+
+    except Exception as e:
+        logger.debug(f"PDF prefix removal failed: {e}")
+        return content
+
 # Default config file location
 DEFAULT_CONFIG_PATH = Path.home() / ".fireflies_cli.yaml"
 
@@ -934,7 +975,7 @@ class FirefliesBrowser:
         import tempfile as tmp_module
 
         temp_dir = Path(tmp_module.gettempdir())
-        temp_file = temp_dir / f"{tmp_module.gettempprefix()}{prefixed_name}"
+        temp_file = temp_dir / prefixed_name  # FIREFLIES_CLI__ prefix is unique enough
         if temp_file.exists():
             temp_file.unlink()
         # Hardlink is preferred (fast, no copy), falls back to copy if cross-device
@@ -2208,6 +2249,14 @@ class MediaDownloader:
                 if video_path:
                     break  # Success, exit strategy loop
 
+                # No video found - check if this is an audio-only stream (e.g., Substack podcast)
+                for ext in audio_exts:
+                    candidate = self.output_dir / f"{file_basename}{ext}"
+                    if candidate.exists():
+                        audio_path = candidate
+                        logger.info(f"  ✅ Audio-only stream: {audio_path.name}")
+                        return (audio_path, None)  # Return audio, no video
+
             except yt_dlp.utils.DownloadError as e:
                 logger.debug(f"  {strategy['name']} failed: {e}")
                 continue  # Try next strategy
@@ -2217,6 +2266,12 @@ class MediaDownloader:
                 continue
 
         if not video_path:
+            # Final fallback: check for any audio file that was downloaded
+            for ext in audio_exts:
+                candidate = self.output_dir / f"{file_basename}{ext}"
+                if candidate.exists():
+                    logger.info(f"  ✅ Audio-only stream found: {candidate.name}")
+                    return (candidate, None)
             logger.error("  ❌ Video download failed - all strategies exhausted")
             logger.error("  Try: pip install -U yt-dlp")
             return (None, None)
@@ -2944,7 +2999,7 @@ class FirefliesWorkflow:
             content = self.download_api.download(transcript_id, "transcript", "pdf")
             if content:
                 path = output_dir / f"{basename} - Fireflies Transcript.pdf"
-                atomic_write_bytes(path, content)
+                atomic_write_bytes(path, strip_cli_prefix_from_pdf(content))
                 logger.info(f"    💾 Saved: {path.name}")
 
         # Skip summary if transcript_only
@@ -2976,7 +3031,7 @@ class FirefliesWorkflow:
                 )
                 if summary_pdf:
                     path = output_dir / f"{basename} - Fireflies Summary.pdf"
-                    atomic_write_bytes(path, summary_pdf)
+                    atomic_write_bytes(path, strip_cli_prefix_from_pdf(summary_pdf))
                     logger.info(f"    💾 Saved: {path.name}")
 
             # Check if all needed files are done
@@ -3072,7 +3127,7 @@ class FirefliesWorkflow:
             content = self.download_api.download(transcript_id, "transcript", "pdf")
             if content:
                 path = output_dir / f"{basename} - Fireflies Transcript.pdf"
-                atomic_write_bytes(path, content)
+                atomic_write_bytes(path, strip_cli_prefix_from_pdf(content))
                 logger.info(f"  💾 Saved: {path.name}")
 
         # Skip summary if transcript_only
@@ -3093,7 +3148,7 @@ class FirefliesWorkflow:
             content = self.download_api.download(transcript_id, "summary", "pdf")
             if content:
                 path = output_dir / f"{basename} - Fireflies Summary.pdf"
-                atomic_write_bytes(path, content)
+                atomic_write_bytes(path, strip_cli_prefix_from_pdf(content))
                 logger.info(f"  💾 Saved: {path.name}")
 
         logger.info("Complete!")
