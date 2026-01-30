@@ -3059,6 +3059,7 @@ class FirefliesWorkflow:
         """Download existing transcript by ID.
 
         Naming pattern: {title} - Fireflies {Transcript|Summary}.{md|pdf}
+        Returns True if at least one file was downloaded, False otherwise.
         """
         download_options = download_options or {}
         transcript_only = download_options.get("transcript_only", False)
@@ -3114,6 +3115,7 @@ class FirefliesWorkflow:
         title = re.sub(r"_\d{10}$", "", title)
 
         basename = sanitize_filename(title)
+        files_saved = 0
 
         # Download transcript files
         if not pdf_only:
@@ -3122,6 +3124,7 @@ class FirefliesWorkflow:
                 path = output_dir / f"{basename} - Fireflies Transcript.md"
                 atomic_write_bytes(path, strip_cli_prefix_from_md(content))
                 logger.info(f"  💾 Saved: {path.name}")
+                files_saved += 1
 
         if not md_only:
             content = self.download_api.download(transcript_id, "transcript", "pdf")
@@ -3129,11 +3132,13 @@ class FirefliesWorkflow:
                 path = output_dir / f"{basename} - Fireflies Transcript.pdf"
                 atomic_write_bytes(path, strip_cli_prefix_from_pdf(content))
                 logger.info(f"  💾 Saved: {path.name}")
+                files_saved += 1
 
         # Skip summary if transcript_only
         if transcript_only:
-            logger.info("Complete!")
-            return True
+            if files_saved > 0:
+                logger.info("Complete!")
+            return files_saved > 0
 
         # Summary MD
         if not pdf_only:
@@ -3142,6 +3147,7 @@ class FirefliesWorkflow:
                 path = output_dir / f"{basename} - Fireflies Summary.md"
                 atomic_write_bytes(path, strip_cli_prefix_from_md(content))
                 logger.info(f"  💾 Saved: {path.name}")
+                files_saved += 1
 
         # Summary PDF
         if not md_only:
@@ -3150,9 +3156,11 @@ class FirefliesWorkflow:
                 path = output_dir / f"{basename} - Fireflies Summary.pdf"
                 atomic_write_bytes(path, strip_cli_prefix_from_pdf(content))
                 logger.info(f"  💾 Saved: {path.name}")
+                files_saved += 1
 
-        logger.info("Complete!")
-        return True
+        if files_saved > 0:
+            logger.info("Complete!")
+        return files_saved > 0
 
     def list_uploads(self) -> bool:
         """List recent transcripts via public API."""
@@ -4345,13 +4353,33 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
                 continue
 
         # Check cache for idempotent operations (unless --force)
+        # If cached but files don't exist, download them without re-transcribing
         if not args.force:
             cached_id = check_cache(audio_path)
             if cached_id:
-                logger.warning(f"⏭️ Skipping (already transcribed): {display_name}")
-                logger.info(f"   Cached transcript ID: {cached_id}")
-                results["skipped"].append(display_name)
-                continue
+                existing = check_existing_output_files(display_name, output_dir)
+                if existing:
+                    logger.warning(f"⏭️ Skipping (already transcribed): {display_name}")
+                    logger.info(f"   Cached transcript ID: {cached_id}")
+                    results["skipped"].append(display_name)
+                    continue
+                else:
+                    # Files missing but transcript exists - download without re-upload
+                    logger.info(f"📥 Cached transcript found, downloading files: {display_name}")
+                    logger.info(f"   Transcript ID: {cached_id}")
+                    try:
+                        download_success = workflow.download_existing(cached_id, output_dir, download_options)
+                        if download_success:
+                            results["success"].append(display_name)
+                            if args.notify:
+                                notify_completion(display_name, success=True)
+                            continue  # Success - skip to next file
+                        else:
+                            logger.warning(f"   Download failed, will re-upload")
+                            # Fall through to normal processing
+                    except Exception as e:
+                        logger.warning(f"   Download failed ({e}), will re-upload")
+                        # Fall through to normal processing
 
         try:
             success, transcript_id = workflow.process_file(
