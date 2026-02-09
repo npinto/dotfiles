@@ -624,24 +624,199 @@ class FirefliesBrowser:
 
         return cookies
 
-    def _extract_local_storage(self) -> dict:
-        """Extract localStorage from real browser via a quick page load."""
+    def _extract_localstorage_from_leveldb(self, keys: list[str]) -> dict:
+        """Extract localStorage values directly from browser's LevelDB files.
 
-        # localStorage is in LevelDB (hard to read directly from disk)
-        # Simpler approach: extract key auth values from cookies that we know
-        # The authorization cookie contains the JWT token
-        cookies = self._extract_cookies()
+        Chrome/Brave store localStorage in LevelDB with Snappy-compressed
+        SSTable blocks. This reads the .ldb and .log files, decompresses
+        them, and searches for key-value pairs belonging to fireflies.ai.
+        Works even while the browser is running (reads are safe).
+        """
+        import struct
+
+        try:
+            import snappy
+        except ImportError:
+            logger.debug("  snappy not available, skipping LevelDB extraction")
+            return {}
+
+        profile_path = self._get_profile_path()
+        ldb_dir = profile_path / "Default" / "Local Storage" / "leveldb"
+        if not ldb_dir.exists():
+            logger.debug(f"  LevelDB dir not found: {ldb_dir}")
+            return {}
+
+        CHROME_TABLE_MAGIC = struct.unpack("<Q", bytes.fromhex("57fb808b247547db"))[0]
+        LEVELDB_TABLE_MAGIC = 0x57fb80a745d7f567
+        origin_domain = "fireflies.ai"
+        results = {}
+
+        def decode_varint(data, pos):
+            result = 0; shift = 0
+            while pos < len(data):
+                b = data[pos]; pos += 1
+                result |= (b & 0x7f) << shift
+                if not (b & 0x80):
+                    break
+                shift += 7
+            return result, pos
+
+        def extract_value_at(data, start):
+            """Extract a string value starting after the key marker."""
+            i = start
+            limit = min(start + 20, len(data))
+            while i < limit and (data[i] < 32 or data[i] > 126):
+                i += 1
+            if i >= len(data):
+                return None
+            val = bytearray()
+            if data[i] == ord('{'):
+                depth = 0
+                while i < len(data):
+                    if data[i] == ord('{'):
+                        depth += 1
+                    elif data[i] == ord('}'):
+                        depth -= 1
+                    if 32 <= data[i] < 127:
+                        val.append(data[i])
+                    i += 1
+                    if depth == 0:
+                        break
+            else:
+                ok = set(b'abcdefghijklmnopqrstuvwxyz'
+                         b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                         b'0123456789-_.=')
+                while i < len(data) and data[i] in ok:
+                    val.append(data[i])
+                    i += 1
+            return val.decode("ascii", errors="replace") if val else None
+
+        def search_block(data):
+            for key in keys:
+                if key in results:
+                    continue
+                marker = origin_domain.encode() + b"\x00\x01" + key.encode()
+                idx = 0
+                while True:
+                    idx = data.find(marker, idx)
+                    if idx == -1:
+                        break
+                    value = extract_value_at(data, idx + len(marker))
+                    if value and len(value) > 5:
+                        if key not in results or len(value) > len(results[key]):
+                            results[key] = value
+                    idx += 1
+
+        # Process .ldb files (Snappy-compressed SSTable blocks)
+        for ldb_file in sorted(ldb_dir.glob("*.ldb")):
+            try:
+                raw = ldb_file.read_bytes()
+                if len(raw) < 48:
+                    continue
+                footer = raw[-48:]
+                magic = struct.unpack_from("<Q", footer, 40)[0]
+                if magic not in (CHROME_TABLE_MAGIC, LEVELDB_TABLE_MAGIC):
+                    continue
+
+                pos = 0
+                _, pos = decode_varint(footer, pos)  # mi_off
+                _, pos = decode_varint(footer, pos)  # mi_sz
+                idx_off, pos = decode_varint(footer, pos)
+                idx_sz, pos = decode_varint(footer, pos)
+
+                idx_raw = raw[idx_off:idx_off + idx_sz]
+                if idx_off + idx_sz < len(raw) and raw[idx_off + idx_sz] == 1:
+                    idx_raw = snappy.decompress(idx_raw)
+
+                num_restarts = struct.unpack_from("<I", idx_raw, len(idx_raw) - 4)[0]
+                entries_end = len(idx_raw) - 4 - (num_restarts * 4)
+
+                epos = 0
+                prev_key = b""
+                while epos < entries_end:
+                    shared, epos = decode_varint(idx_raw, epos)
+                    unshared, epos = decode_varint(idx_raw, epos)
+                    vlen, epos = decode_varint(idx_raw, epos)
+                    epos += unshared  # skip key delta
+                    value = idx_raw[epos:epos + vlen]
+                    epos += vlen
+
+                    vpos = 0
+                    blk_off, vpos = decode_varint(value, vpos)
+                    blk_sz, vpos = decode_varint(value, vpos)
+                    if blk_off + blk_sz > len(raw):
+                        continue
+
+                    block_data = raw[blk_off:blk_off + blk_sz]
+                    comp = raw[blk_off + blk_sz] if blk_off + blk_sz < len(raw) else 0
+                    if comp == 1:
+                        try:
+                            block_data = snappy.decompress(block_data)
+                        except Exception:
+                            continue
+
+                    search_block(block_data)
+
+            except Exception:
+                continue
+
+        # Process .log files (WAL - uncompressed record format)
+        for log_file in sorted(ldb_dir.glob("*.log")):
+            try:
+                raw = log_file.read_bytes()
+                all_data = bytearray()
+                for block_start in range(0, len(raw), 32768):
+                    block = raw[block_start:block_start + 32768]
+                    pos = 0
+                    while pos + 7 <= len(block):
+                        length = struct.unpack_from("<H", block, pos + 4)[0]
+                        rtype = block[pos + 6]
+                        if rtype not in (1, 2, 3, 4) or length == 0:
+                            break
+                        all_data.extend(block[pos + 7:pos + 7 + length])
+                        pos += 7 + length
+                if all_data:
+                    search_block(bytes(all_data))
+            except Exception:
+                continue
+
+        return results
+
+    def _extract_local_storage(self) -> dict:
+        """Extract localStorage from browser - tries cookies first, then LevelDB."""
         local_storage = {}
 
-        for cookie in cookies:
-            if cookie["name"] == "authorization":
-                token = cookie["value"]
-                if token.startswith("Bearer%20"):
-                    token = token[9:]
-                elif token.startswith("Bearer "):
-                    token = token[7:]
-                local_storage["AUTHORIZATION"] = token
-                local_storage["REFRESH_TOKEN"] = token
+        # Try cookies first (legacy: authorization cookie)
+        try:
+            cookies = self._extract_cookies()
+            for cookie in cookies:
+                if cookie["name"] == "authorization":
+                    token = cookie["value"]
+                    if token.startswith("Bearer%20"):
+                        token = token[9:]
+                    elif token.startswith("Bearer "):
+                        token = token[7:]
+                    local_storage["AUTHORIZATION"] = token
+                    local_storage["REFRESH_TOKEN"] = token
+        except Exception:
+            pass
+
+        # Fallback: read directly from LevelDB (works when auth is only in localStorage)
+        if "AUTHORIZATION" not in local_storage:
+            try:
+                ldb_data = self._extract_localstorage_from_leveldb(
+                    ["AUTHORIZATION", "REFRESH_TOKEN", "TOKEN_EXPIRY"]
+                )
+                if "AUTHORIZATION" in ldb_data:
+                    local_storage["AUTHORIZATION"] = ldb_data["AUTHORIZATION"]
+                if "REFRESH_TOKEN" in ldb_data:
+                    local_storage["REFRESH_TOKEN"] = ldb_data["REFRESH_TOKEN"]
+                elif "AUTHORIZATION" in ldb_data:
+                    local_storage["REFRESH_TOKEN"] = ldb_data["AUTHORIZATION"]
+                if "TOKEN_EXPIRY" in ldb_data:
+                    local_storage["TOKEN_EXPIRY"] = ldb_data["TOKEN_EXPIRY"]
+            except Exception as e:
+                logger.debug(f"  LevelDB extraction failed: {e}")
 
         return local_storage
 
@@ -721,9 +896,18 @@ class FirefliesBrowser:
                     auth_token = token
                     break
 
-            if not cookies or not auth_token:
+            # Fallback: read auth token from browser's LevelDB localStorage
+            if not auth_token:
+                logger.info("  No auth cookie found, reading localStorage from LevelDB...")
+                ldb_data = self._extract_localstorage_from_leveldb(["AUTHORIZATION"])
+                if "AUTHORIZATION" in ldb_data:
+                    auth_token = ldb_data["AUTHORIZATION"]
+                    logger.info("  Found auth token in LevelDB localStorage")
+
+            if not auth_token:
                 raise RuntimeError(
-                    "No Fireflies cookies found. Login in browser first."
+                    "No Fireflies auth token found in cookies or localStorage. "
+                    "Login to Fireflies in browser first."
                 )
 
             self.context.add_cookies(cookies)
@@ -1336,7 +1520,7 @@ class FirefliesDownloadAPI:
         self._load_cookies(browser)
 
     def _load_cookies(self, browser: str):
-        """Load cookies from browser."""
+        """Load cookies from browser, with LevelDB localStorage fallback."""
         try:
             import browser_cookie3
         except ImportError:
@@ -1361,9 +1545,21 @@ class FirefliesDownloadAPI:
                     token = token[7:]
                 self.auth_token = token
 
+        # Fallback: read auth token from LevelDB localStorage
+        if not self.auth_token and browser in ("brave", "chrome", "chromium"):
+            try:
+                fb = FirefliesBrowser(browser=browser)
+                ldb_data = fb._extract_localstorage_from_leveldb(["AUTHORIZATION"])
+                if "AUTHORIZATION" in ldb_data:
+                    self.auth_token = ldb_data["AUTHORIZATION"]
+                    logger.info(f"  Found auth token in {browser} LevelDB localStorage")
+            except Exception:
+                pass
+
         if not self.auth_token:
             raise RuntimeError(
-                "No auth token found. Login to Fireflies in browser first."
+                "No auth token found in cookies or localStorage. "
+                "Login to Fireflies in browser first."
             )
 
     def _validate_download(
@@ -3780,7 +3976,7 @@ def run_self_test(browser: str = "brave", api_key: str = None) -> bool:
     else:
         results.append(("API key", None, "not set"))
 
-    # Browser cookies
+    # Browser cookies + localStorage
     try:
         import browser_cookie3
         funcs = {"brave": browser_cookie3.brave, "chrome": browser_cookie3.chrome,
@@ -3789,7 +3985,23 @@ def run_self_test(browser: str = "brave", api_key: str = None) -> bool:
         cookies = list(cj)
         auth = next((c for c in cookies if c.name == "authorization"), None)
         results.append((f"cookies ({browser})", len(cookies) > 0, f"{len(cookies)} found"))
-        results.append(("auth token", auth is not None, "found" if auth else "missing - login to Fireflies"))
+        auth_source = None
+        if auth:
+            auth_source = "cookie"
+        else:
+            # Try LevelDB localStorage fallback
+            try:
+                fb = FirefliesBrowser(browser=browser)
+                ldb_data = fb._extract_localstorage_from_leveldb(["AUTHORIZATION"])
+                if "AUTHORIZATION" in ldb_data:
+                    auth = True
+                    auth_source = "localStorage (LevelDB)"
+            except Exception:
+                pass
+        if auth_source:
+            results.append(("auth token", True, f"found in {auth_source}"))
+        else:
+            results.append(("auth token", False, "missing - login to Fireflies"))
     except Exception as e:
         results.append((f"cookies ({browser})", False, str(e)[:40]))
 
@@ -4070,10 +4282,23 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
             if auth_token:
                 print(f"  ✅ Browser cookies ({browser}): auth token found")
             else:
-                print(
-                    f"  ❌ Browser cookies ({browser}): no auth token - login to Fireflies"
-                )
-                all_ok = False
+                # Try LevelDB localStorage fallback
+                try:
+                    fb = FirefliesBrowser(browser=browser)
+                    ldb_data = fb._extract_localstorage_from_leveldb(["AUTHORIZATION"])
+                    if "AUTHORIZATION" in ldb_data:
+                        auth_token = ldb_data["AUTHORIZATION"]
+                        print(f"  ✅ Browser localStorage ({browser}): auth token found via LevelDB")
+                    else:
+                        print(
+                            f"  ❌ Browser cookies/localStorage ({browser}): no auth token - login to Fireflies"
+                        )
+                        all_ok = False
+                except Exception as e2:
+                    print(
+                        f"  ❌ Browser cookies ({browser}): no auth token (LevelDB fallback: {e2})"
+                    )
+                    all_ok = False
         except Exception as e:
             print(f"  ❌ Browser cookies: {e}")
             all_ok = False
