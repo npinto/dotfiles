@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Usage: sshtmux NODE [tmux args...]
+# Examples:
+#   sshtmux myserver att -d -t mysesh
+#   sshtmux myserver new -s work
+#   sshtmux myserver ls
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+    echo "Usage: sshtmux NODE [tmux args...]" >&2
+    exit 1
+fi
+
+NODE="$1"
+shift
+
+ssh -t "$NODE" "\$SHELL -lc 'tmux $*'"
