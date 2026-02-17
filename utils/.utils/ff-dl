@@ -76,8 +76,34 @@ except ImportError:
 try:
     from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 except ImportError:
-    print("pip install playwright && playwright install chromium")
+    print("❌ playwright not found.")
+    print("  Install: pip install playwright && playwright install chromium")
     sys.exit(1)
+
+
+def check_module(module_name: str, install_hint: str) -> bool:
+    """Check if a Python module is importable. Returns True if available."""
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
+
+
+def require_module(module_name: str, install_hint: str) -> None:
+    """Check that a module is available, exit with helpful message if not."""
+    if not check_module(module_name, install_hint):
+        print(f"❌ {module_name} not found.")
+        print(f"  Install: {install_hint}")
+        sys.exit(1)
+
+
+def require_binary(binary_name: str, install_hint: str) -> None:
+    """Check that an external binary is on PATH, exit with helpful message if not."""
+    if not shutil.which(binary_name):
+        print(f"❌ {binary_name} not found.")
+        print(f"  Install: {install_hint}")
+        sys.exit(1)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -594,7 +620,9 @@ class FirefliesBrowser:
         try:
             import browser_cookie3
         except ImportError:
-            raise RuntimeError("pip install browser_cookie3")
+            raise RuntimeError(
+                "❌ browser_cookie3 not found. Install: pip install browser_cookie3"
+            )
 
         browser_funcs = {
             "brave": browser_cookie3.brave,
@@ -1524,7 +1552,9 @@ class FirefliesDownloadAPI:
         try:
             import browser_cookie3
         except ImportError:
-            raise RuntimeError("pip install browser_cookie3")
+            raise RuntimeError(
+                "❌ browser_cookie3 not found. Install: pip install browser_cookie3"
+            )
 
         browser_funcs = {
             "brave": browser_cookie3.brave,
@@ -1978,7 +2008,11 @@ def check_existing_output_files(input_name: str, output_dir: Path) -> list[Path]
 
 def get_youtube_info(url: str) -> dict | None:
     """Get video title and ID without downloading."""
-    import yt_dlp
+    try:
+        import yt_dlp
+    except ImportError:
+        logger.error("❌ yt-dlp not found. Install: pip install yt-dlp")
+        return None
 
     try:
         with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
@@ -4441,6 +4475,9 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
 
         # Media URL (YouTube, Vimeo, Twitter, etc. - all handled by yt-dlp)
         if input_type == "media_url":
+            # Check required dependencies upfront
+            require_module("yt_dlp", "pip install yt-dlp")
+            require_binary("ffmpeg", "brew install ffmpeg")
             try:
                 # Start timing
                 timer = Timer()
