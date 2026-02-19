@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Creates a marker file from claude CLI arguments
+# Usage: touchclaude --resume 4e463a1f-fd51-4d83-ad51-acb3c362da0f
+# Result: touch claude_--resume_4e463a1f-fd51-4d83-ad51-acb3c362da0f
+set -x
+
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: touchclaude [args...]" >&2
+    exit 1
+fi
+
+args=$(IFS=_; echo "$*")
+touch "claude_${args}"
