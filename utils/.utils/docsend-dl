@@ -412,15 +412,17 @@ def suggest_title_with_claude(output_dir, slide_count, max_pages=DEFAULT_TITLE_P
     return None, None
 
 
-def discover_dataroom_documents(url, browser_name):
+def discover_dataroom_documents(url, browser_name, email=None):
     """Use Playwright to discover all documents in a DocSend data room.
 
-    This intercepts GraphQL API responses to extract document URLs directly,
-    which is more reliable than trying to click on documents to open them.
+    Intercepts GraphQL API responses (via response events, not route
+    interception) to extract document URLs. Automatically handles the
+    email verification gate if present.
 
     Args:
         url: Data room URL (e.g., /view/s/xxx or /view/s/xxx/f/yyy)
         browser_name: Browser to load cookies from
+        email: Email to use for data room verification (auto-detected if not provided)
 
     Returns:
         List of (name, url, folder_name) tuples for each document found
@@ -428,7 +430,6 @@ def discover_dataroom_documents(url, browser_name):
     console.print(f"\n[cyan]📂 Discovering documents in data room...[/cyan]")
 
     try:
-        # Load cookies from browser
         import time
 
         browser_funcs = {
@@ -460,22 +461,21 @@ def discover_dataroom_documents(url, browser_name):
             cookies.append(cookie)
 
         # Extract base space URL (without /f/ folder filter)
-        # /view/s/SPACE_ID/f/FOLDER_ID -> /view/s/SPACE_ID
         parsed = urlparse(url)
+        base_netloc = parsed.netloc  # e.g. plcapital.docsend.com
+        base_scheme = parsed.scheme or "https"
         path_parts = parsed.path.strip("/").split("/")
         if "/f/" in url:
-            # Remove folder part to get base URL
             f_index = path_parts.index("f")
             base_path = "/".join(path_parts[:f_index])
-            base_url = f"{parsed.scheme}://{parsed.netloc}/{base_path}"
+            base_url = f"{base_scheme}://{base_netloc}/{base_path}"
         else:
             base_url = url
 
-        # Collect all GraphQL responses
+        # Collect all GraphQL responses (using response events, not route interception)
         all_graphql_responses = []
 
         with sync_playwright() as p:
-            # Use headless mode with anti-detection
             browser = p.chromium.launch(
                 headless=True,
                 args=['--disable-blink-features=AutomationControlled', '--no-sandbox', '--disable-dev-shm-usage']
@@ -485,12 +485,10 @@ def discover_dataroom_documents(url, browser_name):
                 viewport={"width": 1920, "height": 1200},
             )
 
-            # Remove webdriver detection
             context.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             """)
 
-            # Add cookies
             try:
                 context.add_cookies(cookies)
             except Exception as e:
@@ -499,25 +497,23 @@ def discover_dataroom_documents(url, browser_name):
             page = context.new_page()
             page.set_default_timeout(60000)
 
-            # Intercept GraphQL responses to capture document data
-            def handle_graphql_route(route):
-                response = route.fetch()
-                if response.status == 200:
+            # Use response events instead of route interception (less invasive)
+            def on_response(response):
+                if '/graphql' in response.url and response.status == 200:
                     try:
                         body = response.json()
                         all_graphql_responses.append(body)
                     except Exception:
                         pass
-                route.fulfill(response=response)
 
-            page.route('**/graphql', handle_graphql_route)
+            page.on("response", on_response)
 
             console.print(f"   Loading data room... [dim](this may take 30-60s)[/dim]")
             page.goto(base_url, wait_until="networkidle", timeout=60000)
             console.print(f"   Page loaded, waiting for content...")
-            time.sleep(3)
+            time.sleep(5)
 
-            # Check if we're on an error page or auth page
+            # Check if we're on an error page
             page_title = page.title().lower()
             if "error" in page_title or "could not be satisfied" in page_title:
                 console.print("[yellow]   Data room access failed - cookies may have expired[/yellow]")
@@ -525,47 +521,142 @@ def discover_dataroom_documents(url, browser_name):
                 browser.close()
                 return []
 
-            # Check if auth form is present (email verification required)
-            content = page.content().lower()
-            if page.query_selector('input[type="email"]') and "verify" in content:
-                console.print("[yellow]   Data room requires email verification[/yellow]")
-                console.print("[yellow]   Please authenticate in your browser first[/yellow]")
-                browser.close()
-                return []
+            # Check if email verification gate is present
+            email_input = page.query_selector('input[type="email"]')
+            if email_input:
+                # Try to get email from: 1) function arg, 2) GraphQL unauthorized response
+                gate_email = email
+                if not gate_email:
+                    for resp in all_graphql_responses:
+                        try:
+                            viewer = (resp.get('data', {})
+                                      .get('spaceFolder', {})
+                                      .get('unauthorized', {})
+                                      .get('viewer', {}))
+                            if viewer and viewer.get('email'):
+                                gate_email = viewer['email']
+                                break
+                        except (AttributeError, TypeError):
+                            continue
 
-            # Get folder list from sidebar
-            folder_items = page.query_selector_all('[role="listitem"]')
+                if not gate_email:
+                    console.print("[yellow]   Data room requires email verification[/yellow]")
+                    console.print("[yellow]   Please provide --email or authenticate in your browser first[/yellow]")
+                    browser.close()
+                    return []
+
+                console.print(f"   Email gate detected, submitting: [cyan]{gate_email}[/cyan]")
+                email_input.fill(gate_email)
+                time.sleep(0.5)
+
+                # Click the confirm/submit button
+                confirm_btn = (
+                    page.query_selector('button:has-text("Confirm")') or
+                    page.query_selector('button:has-text("Continue")') or
+                    page.query_selector('button:has-text("Submit")') or
+                    page.query_selector('button[type="submit"]')
+                )
+                if confirm_btn:
+                    # Clear stale responses before re-loading
+                    all_graphql_responses.clear()
+                    confirm_btn.click()
+                    console.print(f"   Waiting for authenticated page to load...")
+                    try:
+                        page.wait_for_load_state('networkidle', timeout=30000)
+                    except Exception:
+                        pass
+                    time.sleep(5)
+
+                    # Check if there's a second verification step (e.g. code sent to email)
+                    code_input = page.query_selector('input[type="text"][placeholder*="code" i]') or \
+                                 page.query_selector('input[type="number"]') or \
+                                 page.query_selector('input[aria-label*="verification" i]')
+                    if code_input:
+                        console.print("[yellow]   Data room requires a verification code sent to your email[/yellow]")
+                        console.print("[yellow]   This cannot be automated. Please verify in your browser first.[/yellow]")
+                        browser.close()
+                        return []
+
+                    # Check if we're now authenticated
+                    still_gated = page.query_selector('input[type="email"]')
+                    if still_gated and still_gated.is_visible():
+                        console.print("[yellow]   Email submission failed - still on verification page[/yellow]")
+                        console.print("[yellow]   Please authenticate in your browser first[/yellow]")
+                        browser.close()
+                        return []
+
+                    console.print(f"   [green]✓ Email verified successfully[/green]")
+                else:
+                    console.print("[yellow]   Could not find submit button for email form[/yellow]")
+                    browser.close()
+                    return []
+
+            # -- Folder discovery: try multiple strategies --
             folder_names = []
-            for item in folder_items:
-                try:
-                    text = item.inner_text().strip()
-                    if not text or not item.is_visible():
-                        continue
-                    folder_name = text.split('\n')[0].strip()
-                    if folder_name and folder_name != "Home" and folder_name not in folder_names:
-                        folder_names.append(folder_name)
-                except Exception:
-                    continue
+
+            # Strategy 1: extract from GraphQL spaceFolderTree responses
+            for resp in all_graphql_responses:
+                _extract_folder_names_from_graphql(resp, folder_names)
+
+            # Strategy 2: DOM-based folder discovery (multiple selectors)
+            if not folder_names:
+                for selector in [
+                    '[data-testid*="folder"]',
+                    '[role="treeitem"]',
+                    '[role="listitem"]',
+                    'nav a[href*="/f/"]',
+                    'a[href*="/f/"]',
+                ]:
+                    items = page.query_selector_all(selector)
+                    for item in items:
+                        try:
+                            text = item.inner_text().strip()
+                            if not text or not item.is_visible():
+                                continue
+                            folder_name = text.split('\n')[0].strip()
+                            if folder_name and folder_name != "Home" and folder_name not in folder_names:
+                                folder_names.append(folder_name)
+                        except Exception:
+                            continue
+                    if folder_names:
+                        break
 
             console.print(f"   Found {len(folder_names)} folders")
 
             # Click each folder to trigger GraphQL requests for their contents
             for idx, folder_name in enumerate(folder_names, 1):
                 console.print(f"   Scanning folder {idx}/{len(folder_names)}: {folder_name}...")
-                items = page.query_selector_all('[role="listitem"]')
-                for item in items:
-                    try:
-                        text = item.inner_text().strip().split('\n')[0].strip()
-                        if text == folder_name and item.is_visible():
-                            item.click()
-                            page.wait_for_load_state('networkidle', timeout=10000)
-                            time.sleep(2)
-                            break
-                    except Exception:
-                        continue
+                clicked = False
+                # Try multiple selectors to find clickable folder elements
+                for selector in [
+                    '[data-testid*="folder"]',
+                    '[role="treeitem"]',
+                    '[role="listitem"]',
+                    'a[href*="/f/"]',
+                ]:
+                    if clicked:
+                        break
+                    items = page.query_selector_all(selector)
+                    for item in items:
+                        try:
+                            text = item.inner_text().strip().split('\n')[0].strip()
+                            if text == folder_name and item.is_visible():
+                                item.click()
+                                page.wait_for_load_state('networkidle', timeout=15000)
+                                time.sleep(3)
+                                clicked = True
+                                break
+                        except Exception:
+                            continue
 
-            # Wait for all async responses to complete
+            # Wait for async responses
             time.sleep(3)
+
+            # -- Debug dump (always write when debug logging, or when no docs found) --
+            if logger.isEnabledFor(logging.DEBUG):
+                debug_path = Path("/tmp/docsend_debug_responses.json")
+                debug_path.write_text(json.dumps(all_graphql_responses, indent=2, default=str))
+                console.print(f"   [dim]Debug: wrote {len(all_graphql_responses)} responses to {debug_path}[/dim]")
 
             browser.close()
 
@@ -577,22 +668,36 @@ def discover_dataroom_documents(url, browser_name):
             results = []
             if isinstance(obj, dict):
                 folder = current_folder
+                # Track folder name from SpaceFolder objects
                 if obj.get('__typename') == 'SpaceFolder' and 'name' in obj:
-                    folder = obj['name']
+                    name = obj['name']
+                    # Don't use internal names like "Home" as folder if it's the root
+                    if name and name != 'Home':
+                        folder = name
 
-                if obj.get('__typename') == 'SpaceDocument':
-                    href = obj.get('href', '')
-                    name = obj.get('name', '')
-                    if href and '/d/' in href:
-                        results.append((name, href, folder))
+                # Extract documents - handle both SpaceDocument and UnauthorizedSpaceDocument
+                typename = obj.get('__typename', '')
+                if typename in ('SpaceDocument', 'UnauthorizedSpaceDocument'):
+                    # Try both href and url fields
+                    doc_href = obj.get('href', '') or obj.get('url', '') or ''
+                    doc_name = obj.get('name', '')
+                    if doc_name and doc_href:
+                        results.append((doc_name, doc_href, folder))
 
+                # Process contents.nodes (folder contents)
                 if 'contents' in obj and isinstance(obj.get('contents'), dict):
                     nodes = obj['contents'].get('nodes', [])
                     for node in nodes:
                         results.extend(extract_docs_from_response(node, folder))
 
+                # Process subtree (folder tree)
+                if 'subtree' in obj and isinstance(obj.get('subtree'), list):
+                    for node in obj['subtree']:
+                        results.extend(extract_docs_from_response(node, folder))
+
+                # Recurse into all other dict values
                 for k, v in obj.items():
-                    if k not in ('contents', 'nodes'):
+                    if k not in ('contents', 'nodes', 'subtree'):
                         results.extend(extract_docs_from_response(v, folder))
             elif isinstance(obj, list):
                 for item in obj:
@@ -602,8 +707,9 @@ def discover_dataroom_documents(url, browser_name):
         all_docs = {}  # href -> (name, folder)
         for resp in all_graphql_responses:
             for name, href, folder in extract_docs_from_response(resp):
-                if not href.startswith('http'):
-                    href = f'https://docsend.com{href}'
+                # Normalize URL: make absolute if relative
+                if href and not href.startswith('http'):
+                    href = f'{base_scheme}://{base_netloc}{href}'
                 if href not in all_docs:
                     all_docs[href] = (name, folder)
 
@@ -614,13 +720,19 @@ def discover_dataroom_documents(url, browser_name):
                 by_folder[folder] = []
             by_folder[folder].append((name, doc_url))
 
-        # Display results
-        for folder in ['Home'] + folder_names:
+        # Collect all unique folder names for display ordering
+        all_folder_names = ['Home'] + [f for f in folder_names if f != 'Home']
+        # Add any folders discovered from GraphQL that weren't in sidebar
+        for folder in by_folder:
+            if folder not in all_folder_names:
+                all_folder_names.append(folder)
+
+        for folder in all_folder_names:
             docs = by_folder.get(folder, [])
             if docs:
                 console.print(f"   📁 {folder}: {len(docs)} docs")
                 for name, doc_url in docs:
-                    console.print(f"      • {name[:45]}")
+                    console.print(f"      • {name[:60]}")
 
         # Convert to list format
         documents_with_urls = []
@@ -628,13 +740,41 @@ def discover_dataroom_documents(url, browser_name):
             documents_with_urls.append((name, doc_url, folder))
 
         console.print(f"\n   ✓ Discovered {len(documents_with_urls)} document(s) total")
+
+        if not documents_with_urls:
+            # Always dump responses when extraction fails - critical for debugging
+            debug_path = Path("/tmp/docsend_debug_responses.json")
+            debug_path.write_text(json.dumps(all_graphql_responses, indent=2, default=str))
+            console.print(f"   [yellow]Debug: {len(all_graphql_responses)} responses captured but 0 docs extracted[/yellow]")
+            console.print(f"   [yellow]Responses dumped to {debug_path}[/yellow]")
+
         return documents_with_urls
 
     except Exception as e:
         console.print(f"[red]   Error discovering documents: {e}[/red]")
         import traceback
-        logger.debug(traceback.format_exc())
+        traceback.print_exc()
         return []
+
+
+def _extract_folder_names_from_graphql(obj, folder_names):
+    """Extract folder names from GraphQL responses (spaceFolderTree data)."""
+    if isinstance(obj, dict):
+        # SpaceFolder with name and childFolderIds = a folder node
+        if obj.get('__typename') == 'SpaceFolder' and 'name' in obj:
+            name = obj['name']
+            if name and name != 'Home' and name not in folder_names:
+                folder_names.append(name)
+        # Also check subtree nodes
+        if 'subtree' in obj and isinstance(obj['subtree'], list):
+            for node in obj['subtree']:
+                _extract_folder_names_from_graphql(node, folder_names)
+        for k, v in obj.items():
+            if k != 'subtree':
+                _extract_folder_names_from_graphql(v, folder_names)
+    elif isinstance(obj, list):
+        for item in obj:
+            _extract_folder_names_from_graphql(item, folder_names)
 
 
 def load_cookies_from_browser(browser_name, domain="docsend.com"):
@@ -1896,7 +2036,7 @@ def download_docsend(
         console.print(f"   [green]✓ Cookies loaded - proceeding with download[/green]")
 
         # Discover all documents in the data room
-        documents = discover_dataroom_documents(url, cookies_from_browser)
+        documents = discover_dataroom_documents(url, cookies_from_browser, email=email)
 
         if not documents:
             console.print("[yellow]No documents found in data room[/yellow]")
