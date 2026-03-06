@@ -1504,11 +1504,6 @@ class FirefliesBrowser:
                     logger.debug(f"  Matched {matches}/{len(words)} words: {words}")
                     return True
 
-                # Also check for FIREFLIES_CLI__ prefix
-                if "FIREFLIES_CLI__" in page_text:
-                    logger.debug("  Found FIREFLIES_CLI__ prefix in page")
-                    return True
-
                 if attempt < max_attempts - 1:
                     logger.debug(
                         f"  File not found in list ({matches}/{len(words)} words), retrying... ({attempt + 1}/{max_attempts})"
@@ -2006,7 +2001,30 @@ def check_existing_output_files(input_name: str, output_dir: Path) -> list[Path]
 # =============================================================================
 
 
-def get_youtube_info(url: str) -> dict | None:
+def _parse_cookies_from_browser(spec: str) -> tuple:
+    """Parse BROWSER[:PROFILE][::KEYRING] into yt-dlp cookiesfrombrowser tuple.
+
+    Matches yt-dlp CLI format: brave, brave:Default, brave:Default::basictext
+    """
+    # Split keyring first (:: separator)
+    keyring = None
+    if "::" in spec:
+        spec, keyring = spec.split("::", 1)
+    # Split browser and profile (: separator)
+    parts = spec.split(":", 1)
+    browser = parts[0]
+    profile = parts[1] if len(parts) > 1 else None
+    result = (browser,) if profile is None else (browser, profile)
+    if keyring is not None:
+        # Pad with profile=None if only browser was given
+        if profile is None:
+            result = (browser, None, keyring)
+        else:
+            result = (browser, profile, keyring)
+    return result
+
+
+def get_youtube_info(url: str, cookies_from_browser: str | None = None) -> dict | None:
     """Get video title and ID without downloading."""
     try:
         import yt_dlp
@@ -2015,7 +2033,10 @@ def get_youtube_info(url: str) -> dict | None:
         return None
 
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+        ydl_opts: dict = {"quiet": True, "no_warnings": True}
+        if cookies_from_browser:
+            ydl_opts["cookiesfrombrowser"] = _parse_cookies_from_browser(cookies_from_browser)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             return {
                 "title": info.get("title", "Untitled"),
@@ -2044,12 +2065,19 @@ class MediaDownloader:
     Full list: https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md
     """
 
-    def __init__(self, output_dir: Path):
+    def __init__(self, output_dir: Path, cookies_from_browser: str | None = None):
         self.output_dir = output_dir
+        self.cookies_from_browser = cookies_from_browser
         try:
             import yt_dlp  # noqa: F401
         except ImportError:
             raise RuntimeError("yt-dlp not found. Install: pip install yt-dlp")
+
+    def _ydl_cookie_opts(self) -> dict:
+        """Return yt-dlp cookiesfrombrowser option dict if configured."""
+        if not self.cookies_from_browser:
+            return {}
+        return {"cookiesfrombrowser": _parse_cookies_from_browser(self.cookies_from_browser)}
 
     def download(
         self, url: str, output_basename: str | None = None, keep_video: bool = False
@@ -2070,7 +2098,7 @@ class MediaDownloader:
 
         # First get video info (without downloading)
         try:
-            with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+            with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, **self._ydl_cookie_opts()}) as ydl:
                 info = ydl.extract_info(url, download=False)
         except Exception as e:
             logger.error(f"  Failed to get video info: {e}")
@@ -2350,6 +2378,7 @@ class MediaDownloader:
                 "noprogress": True,  # We handle progress ourselves
                 "progress_hooks": [progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
+                **self._ydl_cookie_opts(),
                 **strategy["opts"],
             }
 
@@ -2460,6 +2489,7 @@ class MediaDownloader:
                 "progress_hooks": [progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
                 "format": strategy["format"],
+                **self._ydl_cookie_opts(),
             }
             if strategy["merge"]:
                 ydl_opts["merge_output_format"] = strategy["merge"]
@@ -3112,7 +3142,37 @@ class FirefliesWorkflow:
             return False, None
         logger.info("  ✅ Pre-upload validation passed")
 
+        # Check if a matching transcript already exists (handles re-runs gracefully)
         transcript_id = None
+        if self.public_api:
+            search_term = Path(display_name).stem
+            try:
+                existing_transcripts = self.public_api.list_transcripts(limit=20)
+                for t in existing_transcripts:
+                    title = t.get("title", "")
+                    tid = t.get("id")
+                    if search_term in title and tid:
+                        logger.info(f"  ✅ Transcript already exists: {tid[:20]}...")
+                        logger.info(f"     Title: {title}")
+                        logger.info("     Skipping upload, downloading directly")
+                        transcript_id = tid
+                        break
+            except Exception as e:
+                logger.debug(f"  Pre-upload transcript check failed: {e}")
+
+        if transcript_id:
+            # Skip upload/poll, go straight to download
+            if timer:
+                timer.start_phase("Download")
+            self._download_files(
+                transcript_id, display_name, output_dir, download_options
+            )
+            if timer:
+                timer.end_phase()
+            update_cache(audio_path, transcript_id)
+            logger.info("Complete!")
+            return True, transcript_id
+
         try:
             # Step 1: Start browser (pass public_api for connection pooling)
             if timer:
@@ -4226,6 +4286,12 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
         help="Don't keep video file (default: video is kept when downloading from URLs)",
     )
     parser.add_argument(
+        "--cookies-from-browser",
+        metavar="BROWSER[:PROFILE][::KEYRING]",
+        help="Use cookies from browser for yt-dlp (e.g., brave, chrome, firefox). "
+        "Required for members-only or age-restricted videos.",
+    )
+    parser.add_argument(
         "--cleanup",
         action="store_true",
         help="Delete ALL FIREFLIES_CLI__ prefixed transcripts AND uploads",
@@ -4488,9 +4554,11 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
                 keep_video = not args.audio_only
                 video_path: Path | None = None
 
+                cookies_browser = getattr(args, "cookies_from_browser", None)
+
                 if args.dated_folder:
                     # Get video info first
-                    info = get_youtube_info(input_str)
+                    info = get_youtube_info(input_str, cookies_from_browser=cookies_browser)
                     if not info:
                         sys.exit(1)
 
@@ -4506,7 +4574,7 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
                         f"{sanitize_filename(info['title'])} [{info['id']}]"
                     )
                     timer.start_phase("Download")
-                    downloader = MediaDownloader(dated_folder)
+                    downloader = MediaDownloader(dated_folder, cookies_from_browser=cookies_browser)
                     audio_path, video_path = downloader.download(
                         input_str,
                         output_basename=output_basename,
@@ -4517,7 +4585,7 @@ Watch mode: polls directory for new audio files (Ctrl+C to stop).
                 else:
                     # Default behavior
                     timer.start_phase("Download")
-                    downloader = MediaDownloader(output_dir)
+                    downloader = MediaDownloader(output_dir, cookies_from_browser=cookies_browser)
                     audio_path, video_path = downloader.download(
                         input_str, keep_video=keep_video
                     )
